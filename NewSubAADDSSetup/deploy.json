@@ -36,7 +36,7 @@
         }
     },
     "variables": {
-         "_artifactsLocation": "https://raw.githubusercontent.com/stgeorgi/wvdquickstart/master",
+         "_artifactsLocation": "https://raw.githubusercontent.com/macquarie-cloud-services/azure-wvd-deployment/master",
         "AdminPasswordSecret": "adminPassword",
         "domainUsername": "domainJoiner",
         "vnetName": "aaddsVnet",
