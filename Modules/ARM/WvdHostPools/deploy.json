@@ -235,7 +235,7 @@
             "type": "Microsoft.DesktopVirtualization/hostpools",
             "apiVersion": "2019-12-10-preview",
             "name": "[parameters('hostpoolName')]",
-            "location": "[parameters('location')]",
+            "location": "eastus",
             "tags": "[parameters('tags')]",
             "properties": {
                 "friendlyName": "[parameters('hostpoolFriendlyName')]",
