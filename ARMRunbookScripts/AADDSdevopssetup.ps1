@@ -96,7 +96,13 @@ $BSTR = [System.Runtime.InteropServices.Marshal]::SecureStringToBSTR($AzCredenti
 $UnsecurePassword = [System.Runtime.InteropServices.Marshal]::PtrToStringAuto($BSTR)
 $PasswordProfile.Password = $UnsecurePassword
 $PasswordProfile.ForceChangePasswordNextLogin = $False
-$domainJoinUPN = $adminUsername + '@' + $domainName
+If ($identityApproach -eq "Azure AD DS") {
+    $aadDomain = (Get-AzureADDomain | where { $_.IsInitial }).Name
+    $domainJoinUPN = $adminUsername + '@' + $aadDomain
+}
+Else {
+    $domainJoinUPN = $adminUsername + '@' + $domainName
+}
 
 New-AzureADUser -DisplayName $adminUsername -PasswordProfile $PasswordProfile -UserPrincipalName $domainJoinUPN -AccountEnabled $true -MailNickName $adminUsername
 
