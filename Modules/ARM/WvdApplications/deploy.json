@@ -57,7 +57,7 @@
                 "count": "[length(parameters('applications'))]"
             },
             "name": "[concat(parameters('appGroupName'), '/', parameters('applications')[copyIndex()].name)]",
-            "location": "[parameters('location')]",
+            "location": "eastus",
             "properties": {
                 "description": "[parameters('applications')[copyIndex()].description]",
                 "friendlyName": "[parameters('applications')[copyIndex()].friendlyName]",
