@@ -339,7 +339,7 @@
             "type": "Microsoft.DesktopVirtualization/applicationgroups",
             "apiVersion": "2019-12-10-preview",
             "name": "[parameters('appGroupName')]",
-            "location": "[parameters('location')]",
+            "location": "eastus",
             "tags": "[parameters('tags')]",
             "properties": {
                 "hostpoolarmpath": "[resourceId('Microsoft.DesktopVirtualization/hostpools/', parameters('hostpoolName'))]",
