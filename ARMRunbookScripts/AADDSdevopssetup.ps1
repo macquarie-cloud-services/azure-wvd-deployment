@@ -203,7 +203,7 @@ $body = @"
 "@
 write-output $body 
 
-$response = Invoke-RestMethod -Uri $url -Headers @{Authorization = "Basic $token"} -Method Post -Body $Body -ContentType application/json
+$response = Invoke-RestMethod -Uri $url -Headers @{Authorization = "Basic $token"} -Method Post -Body $body -ContentType application/json
 write-output $response
 $endpointId = $response.id  # needed to set permissions later
 
@@ -226,7 +226,7 @@ $body = @"
 "@
 write-output $body 
 
-$response = Invoke-RestMethod -Uri $url -Headers @{Authorization = "Basic $token"} -Method Post -Body $Body -ContentType application/json
+$response = Invoke-RestMethod -Uri $url -Headers @{Authorization = "Basic $token"} -Method Post -Body $body -ContentType application/json
 write-output $response
 
 # Clone public github repo with all the required files
@@ -244,7 +244,7 @@ $body = @"
 "@
 write-output $body 
 
-$response = Invoke-RestMethod -Uri $url -Headers @{Authorization = "Basic $token"} -Method Post -Body $Body -ContentType application/json
+$response = Invoke-RestMethod -Uri $url -Headers @{Authorization = "Basic $token"} -Method Post -Body $body -ContentType application/json
 write-output $response
 
 # In case Azure AD DS is used, create a new user here, and assign it to the targetGroup. The principalID of this group will then be used.
@@ -393,7 +393,7 @@ $body = @"
 "@
 write-output $body
 
-$response = Invoke-RestMethod -Uri $url -Headers @{Authorization = "Basic $token"} -Method Post -Body $Body -ContentType application/json
+$response = Invoke-RestMethod -Uri $url -Headers @{Authorization = "Basic $token"} -Method Post -Body $body -ContentType application/json
 write-output $response
 
 # Give service principal access to the keyvault
@@ -458,7 +458,7 @@ $body = @"
 "@
 write-output "Request body for this request not printed to logs because it contains sensitive information."
 
-$response = Invoke-RestMethod -Uri $url -Headers @{Authorization = "Basic $token"} -Method Post -Body $Body -ContentType application/json
+$response = Invoke-RestMethod -Uri $url -Headers @{Authorization = "Basic $token"} -Method Post -Body $body -ContentType application/json
 write-output $response
 $variableGroupId = $response.id
 
