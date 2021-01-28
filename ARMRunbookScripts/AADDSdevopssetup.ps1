@@ -96,15 +96,17 @@ $BSTR = [System.Runtime.InteropServices.Marshal]::SecureStringToBSTR($AzCredenti
 $UnsecurePassword = [System.Runtime.InteropServices.Marshal]::PtrToStringAuto($BSTR)
 $PasswordProfile.Password = $UnsecurePassword
 $PasswordProfile.ForceChangePasswordNextLogin = $False
+$domainJoinUPN = $adminUsername + '@' + $domainName
+
 If ($identityApproach -eq "Azure AD DS") {
+    # Create new user in Azure AD to be synced to Azure AD DS
     $aadDomain = (Get-AzureADDomain | where { $_.IsInitial }).Name
-    $domainJoinUPN = $adminUsername + '@' + $aadDomain
+    $domainJoinAAD = $adminUsername + '@' + $aadDomain
+    New-AzureADUser -DisplayName $adminUsername -PasswordProfile $PasswordProfile -UserPrincipalName $domainJoinAAD -AccountEnabled $true -MailNickName $adminUsername
 }
 Else {
-    $domainJoinUPN = $adminUsername + '@' + $domainName
+    New-AzureADUser -DisplayName $adminUsername -PasswordProfile $PasswordProfile -UserPrincipalName $domainJoinUPN -AccountEnabled $true -MailNickName $adminUsername
 }
-
-New-AzureADUser -DisplayName $adminUsername -PasswordProfile $PasswordProfile -UserPrincipalName $domainJoinUPN -AccountEnabled $true -MailNickName $adminUsername
 
 $domainUser = Get-AzureADUser -Filter "UserPrincipalName eq '$($domainJoinUPN)'" | Select-Object ObjectId
 # Fetch user to assign to role
