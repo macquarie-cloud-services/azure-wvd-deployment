@@ -74,6 +74,8 @@ if ($RoleAssignment.RoleDefinitionName -eq "Owner" -or $RoleAssignment.RoleDefin
 			Write-Output "Creating new application..."
 			# Create a new AD Application with provided AppName
 			$azAdApplication = New-AzureADApplication -DisplayName $AppName -PublicClient $false -AvailableToOtherTenants $false -ReplyUrls $redirectURL
+			# Wait for Application to be created
+			Start-Sleep -s 30
 		}
 		catch
 		{
@@ -82,7 +84,12 @@ if ($RoleAssignment.RoleDefinitionName -eq "Owner" -or $RoleAssignment.RoleDefin
 		}
 	}
 	$azAdApplication = Get-AzADApplication -DisplayName $AppName -ErrorAction SilentlyContinue
-
+	if ($azAdApplication -eq $null)
+	{
+		Write-Error "Unable to create Azure AD Application $AppName"
+		Exit
+	}
+	
 	# Create a Client Secret
 	$StartDate = Get-Date
 	$EndDate = $StartDate.AddYears(280)
