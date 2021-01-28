@@ -163,9 +163,9 @@ if ($RoleAssignment.RoleDefinitionName -eq "Owner" -or $RoleAssignment.RoleDefin
 	New-AzAutomationCredential -AutomationAccountName $AutomationAccountName -Name "ServicePrincipalCred" -Value $servicePrincipalCredentials -ResourceGroupName $ResourceGroupName
 
 	# Create new automation variables with the newly created service principal details in them for use in the devops setup script
-	New-AzAutomationVariable -AutomationAccountName $AutomationAccountName -Name "PrincipalId" -Encrypted $False -Value $applicationId -ResourceGroupName $ResourceGroupName
-	New-AzAutomationVariable -AutomationAccountName $AutomationAccountName -Name "Secret" -Encrypted $False -Value $secureClientSecret -ResourceGroupName $ResourceGroupName
-	New-AzAutomationVariable -AutomationAccountName $AutomationAccountName -Name "ObjectId" -Encrypted $False -Value $azAdApplication.ObjectId -ResourceGroupName $ResourceGroupName
+	New-AzAutomationVariable -AutomationAccountName $AutomationAccountName -Name "principalId" -Encrypted $False -Value $applicationId -ResourceGroupName $ResourceGroupName
+	New-AzAutomationVariable -AutomationAccountName $AutomationAccountName -Name "secret" -Encrypted $False -Value $secureClientSecret -ResourceGroupName $ResourceGroupName
+	New-AzAutomationVariable -AutomationAccountName $AutomationAccountName -Name "objectId" -Encrypted $False -Value $azAdApplication.ObjectId -ResourceGroupName $ResourceGroupName
 
 	# Assign service principal contributor and user acess administrator roles on subscription level
 	New-AzRoleAssignment -RoleDefinitionName "Contributor" -ApplicationId $applicationId
