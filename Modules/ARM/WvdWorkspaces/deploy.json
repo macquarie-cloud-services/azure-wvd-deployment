@@ -155,7 +155,7 @@
             "type": "Microsoft.DesktopVirtualization/workspaces",
             "apiVersion": "2019-12-10-preview",
             "name": "[parameters('workSpaceName')]",
-            "location": "[parameters('location')]",
+            "location": "eastus",
             "tags": "[parameters('tags')]",
             "properties": {
                 "applicationGroupReferences": "[parameters('appGroupResourceIds')]",
