@@ -77,7 +77,7 @@ variables:
   value: "latest"
 
 - name: HostPoolName
-  value: "QS-WVD-HP"
+  value: "[hostpoolname]"
   
 - name: profilesStorageAccountName
   value: "[profilesStorageAccountName]"
