@@ -155,6 +155,10 @@
                 "value": "[concat('\"',variables('subnetName'),'\"')]"
             },
             {
+                "name": "subnetAddressPrefix",
+                "value": "[concat('\"',variables('subnetAddressPrefix'),'\"')]"
+            },
+            {
                 "name": "targetGroup",
                 "value": "[concat('\"', variables('targetGroup'),'\"')]"
             },
