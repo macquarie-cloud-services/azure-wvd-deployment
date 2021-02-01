@@ -82,8 +82,8 @@
         "jobGuid0": "[guid(toLower(uniquestring(variables('identityName'), resourceGroup().id, parameters('utcValue'),'credentials')))]",
         "jobGuid": "[guid(toLower(uniquestring(variables('identityName'), resourceGroup().id, parameters('utcValue'),variables('autoAccountName'))))]",
         "jobGuid2": "[guid(toLower(uniquestring(variables('identityName'), subscription().id, parameters('utcValue'),'devOpsSetup')))]",
-        "devOpsName": "[concat(parameters('customerName'),'-WVD')]",   
-        "devOpsProjectName": "[concat(parameters('customerName'),'-WVDProj')]",
+        "devOpsName": "[concat(parameters('customerName'), 'WVD', skip(parameters('utcValue'), 9))]",   
+        "devOpsProjectName": "[concat(parameters('customerName'),'WVDProj', skip(parameters('utcValue'), 9))]",
         "targetGroup": "WVDUsers",
         "automationVariables": [
             {
