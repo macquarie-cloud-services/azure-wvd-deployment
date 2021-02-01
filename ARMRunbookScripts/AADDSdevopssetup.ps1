@@ -108,24 +108,25 @@ If ($identityApproach -eq "Azure AD DS") {
     $aadDomain = (Get-AzureADDomain | where { $_.IsInitial }).Name
     $domainJoinAAD = $adminUsername + '@' + $aadDomain
     New-AzureADUser -DisplayName $adminUsername -PasswordProfile $PasswordProfile -UserPrincipalName $domainJoinAAD -AccountEnabled $true -MailNickName $adminUsername
+    $domainUser = Get-AzureADUser -Filter "UserPrincipalName eq '$($domainJoinAAD)'" | Select-Object ObjectId
 }
 Else {
     New-AzureADUser -DisplayName $adminUsername -PasswordProfile $PasswordProfile -UserPrincipalName $domainJoinUPN -AccountEnabled $true -MailNickName $adminUsername
+    $domainUser = Get-AzureADUser -Filter "UserPrincipalName eq '$($domainJoinUPN)'" | Select-Object ObjectId
 }
 
-$domainUser = Get-AzureADUser -Filter "UserPrincipalName eq '$($domainJoinUPN)'" | Select-Object ObjectId
 # Fetch user to assign to role
 $roleMember = Get-AzureADUser -ObjectId $domainUser.ObjectId
 
 # Fetch User Account Administrator role instance
-$role = Get-AzureADDirectoryRole | Where-Object {$_.displayName -eq 'Company Administrator'}
+$role = Get-AzureADDirectoryRole | Where-Object {$_.displayName -eq 'User Administrator'}
 # If role instance does not exist, instantiate it based on the role template
 if ($role -eq $null) {
     # Instantiate an instance of the role template
-    $roleTemplate = Get-AzureADDirectoryRoleTemplate | Where-Object {$_.displayName -eq 'Company Administrator'}
+    $roleTemplate = Get-AzureADDirectoryRoleTemplate | Where-Object {$_.displayName -eq 'User Administrator'}
     Enable-AzureADDirectoryRole -RoleTemplateId $roleTemplate.ObjectId
     # Fetch User Account Administrator role instance again
-    $role = Get-AzureADDirectoryRole | Where-Object {$_.displayName -eq 'Company Administrator'}
+    $role = Get-AzureADDirectoryRole | Where-Object {$_.displayName -eq 'User Administrator'}
 }
 # Add user to role
 Add-AzureADDirectoryRoleMember -ObjectId $role.ObjectId -RefObjectId $roleMember.ObjectId
