@@ -31,8 +31,8 @@
     hostpoolType                          = "Pooled"                            # Type of host pool, can be "Personal" or "Pooled" (default)
     maxSessionLimit                       = 16                                  # default
     loadBalancerType                      = "BreadthFirst"                      # Load-balancing algorithm
-    vmNamePrefix                          = "QS-WVD-VM"                         # Prefix for the WVD VMs that will be deployed
-    vmSize                                = "Standard_D2s_v3"                   # The VM SKU
+    vmNamePrefix                          = "[vmNamePrefix]"                         # Prefix for the WVD VMs that will be deployed
+    vmSize                                = "[hostpoolVMSize]"                 # The VM SKU
     vmNumberOfInstances                   = 2                                   # Number of VMs to be deployed
     vmInitialNumber                       = 1                                   # default
     diskSizeGB                            = 128                                 # Size of the VMs' disk
@@ -49,11 +49,11 @@
 
     # App group related #
     # ================== #
-    appGroupName                          = "QS-WVD-RAG"                        # Remote app group name
-    DesktopAppGroupName                   = "QS-WVD-DAG"                        # Desktop app group name
+    appGroupName                          = "WVD-AppGroup01"                    # Remote app group name
+    DesktopAppGroupName                   = "WVD-Desktop01"                     # Desktop app group name
     targetGroup                           = "[targetGroup]"                     # Name of the user group to be assigned to the WVD environment. Only change to an existing group as group is created only in the initial ARM deployment.
     principalIds                          = "[principalIds]"                    # principal ID of the above test user group
-    workSpaceName                         = "QS-WVD-WS"                         # Name of the WVD workspace
+    workSpaceName                         = "WVD-WS01"                          # Name of the WVD workspace
     workspaceFriendlyName                 = "WVD Workspace"                     # User-facing friendly name of the above workspace
     ######################
 
