@@ -77,7 +77,7 @@
         "keyvaultName": "[concat(parameters('customerName'),'-wvdkv01')]",
         "assetsName": "[concat('assets', toLower(skip(parameters('utcValue'), 4)))]",
         "profilesName": "[concat(parameters('customerName'),'wvdprofiles')]",
-        "autoAccountName": "[concat(parameters('customerName'), '-ae-automation')]",
+        "autoAccountName": "[concat(parameters('customerName'), '-wvd-automation')]",
         "tenantId": "[subscription().tenantId]",
         "jobGuid0": "[guid(toLower(uniquestring(variables('identityName'), resourceGroup().id, parameters('utcValue'),'credentials')))]",
         "jobGuid": "[guid(toLower(uniquestring(variables('identityName'), resourceGroup().id, parameters('utcValue'),variables('autoAccountName'))))]",
