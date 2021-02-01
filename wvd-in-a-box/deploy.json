@@ -456,12 +456,13 @@
             }
         },
         {
-          "type": "Microsoft.Compute/galleries",
-          "name": "[variables('galleryName')]",
-          "apiVersion": "2019-12-01",
-          "location": "[variables('location')]",
-          "properties": {
-            "description": "WVD Shared Image Gallery"
+            "type": "Microsoft.Compute/galleries",
+            "name": "[variables('galleryName')]",
+            "apiVersion": "2019-12-01",
+            "location": "[variables('location')]",
+            "properties": {
+                "description": "WVD Shared Image Gallery"
+            }
         },
         {
             "apiVersion": "2018-10-01",
@@ -554,7 +555,6 @@
             "subnetId": "[variables('subnetRefId')]"
             }
         }
-    } 
     ],
     "outputs": {}
   }
