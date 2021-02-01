@@ -74,7 +74,7 @@
         "identityName": "WVDServicePrincipal",
         "location": "[resourcegroup().location]",
         "rgName": "[resourcegroup().name]",
-        "keyvaultName": "[concat(parameters('customerName'),'-wvdkv01')]",
+        "keyvaultName": "[concat(parameters('customerName'),'-wvdkv', parameters('utcValue'))]",
         "assetsName": "[concat(parameters('customerName'),'wvdassets')]",
         "profilesName": "[concat(parameters('customerName'),'wvdprofiles')]",
         "autoAccountName": "[concat(parameters('customerName'), '-wvd-automation')]",
