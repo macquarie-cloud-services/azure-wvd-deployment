@@ -75,7 +75,7 @@
         "location": "[resourcegroup().location]",
         "rgName": "[resourcegroup().name]",
         "keyvaultName": "[concat(parameters('customerName'),'-wvdkv01')]",
-        "assetsName": "[concat('assets', toLower(skip(parameters('utcValue'), 4)))]",
+        "assetsName": "[concat(parameters('customerName'),'wvdassets')))]",
         "profilesName": "[concat(parameters('customerName'),'wvdprofiles')]",
         "autoAccountName": "[concat(parameters('customerName'), '-wvd-automation')]",
         "tenantId": "[subscription().tenantId]",
