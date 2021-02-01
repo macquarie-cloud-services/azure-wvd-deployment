@@ -69,6 +69,7 @@
         "subnetAddressPrefix": "[parameters('subnetAddressPrefix')]",
         "domainName": "[parameters('domainName')]",
         "hostpoolVMSize": "[parameters('hostpoolVMSize')]",
+        "galleryName": "[concat(parameters('customerName'),'wvdsig01')]",
         "identityName": "WVDServicePrincipal",
         "location": "[resourcegroup().location]",
         "rgName": "[resourcegroup().name]",
@@ -455,6 +456,14 @@
             }
         },
         {
+          "type": "Microsoft.Compute/galleries",
+          "name": "[variables('galleryName')]",
+          "apiVersion": "2019-12-01",
+          "location": "[variables('location')]",
+          "properties": {
+            "description": "WVD Shared Image Gallery"
+        },
+        {
             "apiVersion": "2018-10-01",
             "type": "Microsoft.Network/networkSecurityGroups",
             "name": "[variables('domainServicesNSGName')]",
@@ -545,6 +554,7 @@
             "subnetId": "[variables('subnetRefId')]"
             }
         }
+    } 
     ],
     "outputs": {}
   }
