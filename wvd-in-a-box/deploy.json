@@ -70,7 +70,7 @@
         "domainName": "[parameters('domainName')]",
         "hostpoolname": "[concat(parameters('customerName'),'-wvdpool01')]",
         "hostpoolVMSize": "[parameters('hostpoolVMSize')]",
-        "galleryName": "[concat(parameters('customerName'),'wvdsig01')]",
+        "sigGalleryName": "[concat(parameters('customerName'),'wvdsig01')]",
         "identityName": "WVDServicePrincipal",
         "location": "[resourcegroup().location]",
         "rgName": "[resourcegroup().name]",
@@ -109,6 +109,10 @@
             {
                 "name": "hostpoolVMSize",
                 "value": "[concat('\"',variables('hostpoolVMSize'),'\"')]"
+            },
+            {
+                "name": "sigGalleryName",
+                "value": "[concat('\"',variables('sigGalleryName'),'\"')]"
             },
             {
                 "name": "fileURI",
@@ -466,7 +470,7 @@
         },
         {
             "type": "Microsoft.Compute/galleries",
-            "name": "[variables('galleryName')]",
+            "name": "[variables('sigGalleryName')]",
             "apiVersion": "2019-12-01",
             "location": "[variables('location')]",
             "properties": {
