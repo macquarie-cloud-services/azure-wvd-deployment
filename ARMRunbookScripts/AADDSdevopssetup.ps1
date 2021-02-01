@@ -92,7 +92,7 @@ $vnet = Get-AzVirtualNetwork -ResourceGroupName $virtualNetworkResourceGroupName
 $subnetArray = $subnetAddressPrefix.Split(".")
 $dnsip1 = $subnetArray[0] + "." + $subnetArray[1] + "." + $subnetArray[2] + "." + [string]([int]$subnetArray[3].Split("/")[0] + 4)
 $dnsip2 = $subnetArray[0] + "." + $subnetArray[1] + "." + $subnetArray[2] + "." + [string]([int]$subnetArray[3].Split("/")[0] + 5)
-$vnet.DhcpOptions.DnsServers = "'" + $dnsip1 + "', '" + $dnsip2 + "'"
+$vnet.DhcpOptions.DnsServers = @($dnsip1,$dnsip2)
 Set-AzVirtualNetwork -VirtualNetwork $vnet
 
 # Create admin user for domain join
