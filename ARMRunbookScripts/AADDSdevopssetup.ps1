@@ -35,6 +35,7 @@ $profilesStorageAccountName = Get-AutomationVariable -Name 'profilesName'
 $ObjectId = Get-AutomationVariable -Name 'ObjectId'
 $existingVnetName = Get-AutomationVariable -Name 'existingVnetName'
 $existingSubnetName = Get-AutomationVariable -Name 'existingSubnetName'
+$subnetAddressPrefix = Get-AutomationVariable -Name 'subnetAddressPrefix'
 $virtualNetworkResourceGroupName = Get-AutomationVariable -Name 'ResourceGroupName'
 $targetGroup = Get-AutomationVariable -Name 'targetGroup'
 $AutomationAccountName = Get-AutomationVariable -Name 'AccountName'
@@ -88,7 +89,10 @@ Select-AzSubscription -SubscriptionId $SubscriptionId
 
 #Set vnet DNS settings to "custom"
 $vnet = Get-AzVirtualNetwork -ResourceGroupName $virtualNetworkResourceGroupName -name $existingVnetName
-$vnet.DhcpOptions.DnsServers = "10.0.0.4"
+$subnetArray = $subnetAddressPrefix.Split(".")
+$dnsip1 = $subnetArray[0] + "." + $subnetArray[1] + "." + $subnetArray[2] + "." + [string]([int]$subnetArray[3].Split("/")[0] + 4)
+$dnsip2 = $subnetArray[0] + "." + $subnetArray[1] + "." + $subnetArray[2] + "." + [string]([int]$subnetArray[3].Split("/")[0] + 5)
+$vnet.DhcpOptions.DnsServers = "'" + $dnsip1 + "', '" + $dnsip2 + "'"
 Set-AzVirtualNetwork -VirtualNetwork $vnet
 
 # Create admin user for domain join
