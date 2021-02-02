@@ -64,35 +64,35 @@ $location="westus"
 $subscriptionID=$currentAzContext.Subscription.Id
 
 # name of the image to be created
-$imageName="aibCustomImgWin10"
+$imageName="win10-o365-image1"
 
 # image template name
-$imageTemplateName="helloImageTemplateWin02ps"
+$imageTemplateName="win10-o365-Template01"
 
 # distribution properties object name (runOutput), i.e. this gives you the properties of the managed image on completion
-$runOutputName="winclientR01"
+$runOutputName="win10-o365-img01-ro"
 
 # create resource group
 New-AzResourceGroup -Name $imageResourceGroup -Location $location
 ```
 
-## Step 2 : Permissions, create user idenity and role for AIB
+## Step 2 : Permissions, create user identity and role for AIB
 
 ### Create user identity
 ```powerShell
 # setup role def names, these need to be unique
 $timeInt=$(get-date -UFormat "%s")
 $imageRoleDefName="Azure Image Builder Image Def"+$timeInt
-$idenityName="aibIdentity"+$timeInt
+$identityName="aibIdentity"+$timeInt
 
 ## Add AZ PS module to support AzUserAssignedIdentity
 Install-Module -Name Az.ManagedServiceIdentity
 
 # create identity
-New-AzUserAssignedIdentity -ResourceGroupName $imageResourceGroup -Name $idenityName
+New-AzUserAssignedIdentity -ResourceGroupName $imageResourceGroup -Name $identityName
 
-$idenityNameResourceId=$(Get-AzUserAssignedIdentity -ResourceGroupName $imageResourceGroup -Name $idenityName).Id
-$idenityNamePrincipalId=$(Get-AzUserAssignedIdentity -ResourceGroupName $imageResourceGroup -Name $idenityName).PrincipalId
+$identityNameResourceId=$(Get-AzUserAssignedIdentity -ResourceGroupName $imageResourceGroup -Name $identityName).Id
+$identityNamePrincipalId=$(Get-AzUserAssignedIdentity -ResourceGroupName $imageResourceGroup -Name $identityName).PrincipalId
 
 ```
 
@@ -113,7 +113,7 @@ Invoke-WebRequest -Uri $aibRoleImageCreationUrl -OutFile $aibRoleImageCreationPa
 New-AzRoleDefinition -InputFile  ./aibRoleImageCreation.json
 
 # grant role definition to image builder service principal
-New-AzRoleAssignment -ObjectId $idenityNamePrincipalId -RoleDefinitionName $imageRoleDefName -Scope "/subscriptions/$subscriptionID/resourceGroups/$imageResourceGroup"
+New-AzRoleAssignment -ObjectId $identityNamePrincipalId -RoleDefinitionName $imageRoleDefName -Scope "/subscriptions/$subscriptionID/resourceGroups/$imageResourceGroup"
 
 ### NOTE: If you see this error: 'New-AzRoleDefinition: Role definition limit exceeded. No more role definitions can be created.' See this article to resolve:
 https://docs.microsoft.com/en-us/azure/role-based-access-control/troubleshooting
@@ -124,8 +124,8 @@ https://docs.microsoft.com/en-us/azure/role-based-access-control/troubleshooting
 ## Step 3 : Create the Shared Image Gallery
 
 ```powerShell
-$sigGalleryName= "myaibsig01"
-$imageDefName ="winSvrimages"
+$sigGalleryName= "aibsig01"
+$imageDefName ="wvdimages"
 
 # additional replication region
 $replRegion2="eastus"
@@ -134,7 +134,7 @@ $replRegion2="eastus"
 New-AzGallery -GalleryName $sigGalleryName -ResourceGroupName $imageResourceGroup  -Location $location
 
 # create gallery definition
-New-AzGalleryImageDefinition -GalleryName $sigGalleryName -ResourceGroupName $imageResourceGroup -Location $location -Name $imageDefName -OsState generalized -OsType Windows -Publisher 'myCo' -Offer 'Windows' -Sku 'Win2019'
+New-AzGalleryImageDefinition -GalleryName $sigGalleryName -ResourceGroupName $imageResourceGroup -Location $location -Name $imageDefName -OsState generalized -OsType Windows -Publisher 'MicrosoftWindowsDesktop' -Offer 'office-365' -Sku 'rs5-evd-o365pp'
 
 ```
 
@@ -157,7 +157,7 @@ Invoke-WebRequest -Uri $templateUrl -OutFile $templateFilePath -UseBasicParsing
 ((Get-Content -path $templateFilePath -Raw) -replace '<region1>',$location) | Set-Content -Path $templateFilePath
 ((Get-Content -path $templateFilePath -Raw) -replace '<region2>',$replRegion2) | Set-Content -Path $templateFilePath
 
-((Get-Content -path $templateFilePath -Raw) -replace '<imgBuilderId>',$idenityNameResourceId) | Set-Content -Path $templateFilePath
+((Get-Content -path $templateFilePath -Raw) -replace '<imgBuilderId>',$identityNameResourceId) | Set-Content -Path $templateFilePath
 
 ```
 
@@ -259,13 +259,13 @@ Remove-AzResource -ResourceId $resTemplateId.ResourceId -Force
 ```
 ### Delete role assignment
 ```powerShell
-Remove-AzRoleAssignment -ObjectId $idenityNamePrincipalId -RoleDefinitionName $imageRoleDefName -Scope "/subscriptions/$subscriptionID/resourceGroups/$imageResourceGroup"
+Remove-AzRoleAssignment -ObjectId $identityNamePrincipalId -RoleDefinitionName $imageRoleDefName -Scope "/subscriptions/$subscriptionID/resourceGroups/$imageResourceGroup"
 
 ## remove definitions
-Remove-AzRoleDefinition -Name "$idenityNamePrincipalId" -Force -Scope "/subscriptions/$subscriptionID/resourceGroups/$imageResourceGroup"
+Remove-AzRoleDefinition -Name "$identityNamePrincipalId" -Force -Scope "/subscriptions/$subscriptionID/resourceGroups/$imageResourceGroup"
 
 ## delete identity
-Remove-AzUserAssignedIdentity -ResourceGroupName $imageResourceGroup -Name $idenityName -Force
+Remove-AzUserAssignedIdentity -ResourceGroupName $imageResourceGroup -Name $identityName -Force
 ```
 ### Delete Resource Group
 ```powerShell
