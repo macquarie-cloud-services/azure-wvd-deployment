@@ -106,7 +106,7 @@ $idenityNamePrincipalId=$(Get-AzUserAssignedIdentity -ResourceGroupName $imageRe
 ### Assign permissions for identity to distribute images
 This command will download and update the template with the parameters specified earlier.
 ```powerShell
-$aibRoleImageCreationUrl="https://raw.githubusercontent.com/danielsollondon/azvmimagebuilder/master/solutions/12_Creating_AIB_Security_Roles/aibRoleImageCreation.json"
+$aibRoleImageCreationUrl="https://raw.githubusercontent.com/macquarie-cloud-services/azure-wvd-deployment/master/azvmimagebuilder/aibRoleImageCreation.json"
 $aibRoleImageCreationPath = "aibRoleImageCreation.json"
 
 # download config
@@ -132,8 +132,8 @@ For more information on image builder permissions, please review this [document]
 # Download and update template
 ```powerShell
 # update AIB image config template
-$templateUrl="https://raw.githubusercontent.com/danielsollondon/azvmimagebuilder/master/quickquickstarts/0_Creating_a_Custom_Windows_Managed_Image/helloImageTemplateWin01.json"
-$templateFilePath = "helloImageTemplateWin01.json"
+$templateUrl="https://raw.githubusercontent.com/macquarie-cloud-services/azure-wvd-deployment/master/azvmimagebuilder/ImageTemplate-Win10-o365.json"
+$templateFilePath = "ImageTemplate-Win10-o365.json"
 
 # download configs
 Invoke-WebRequest -Uri $templateUrl -OutFile $templateFilePath -UseBasicParsing
