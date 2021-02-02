@@ -58,7 +58,7 @@ $currentAzContext = Get-AzContext
 $imageResourceGroup="aibwinsig01"
 
 # location (see possible locations in main docs)
-$location="westus"
+$location="westus2"
 
 # your subscription, this will get your current subscription
 $subscriptionID=$currentAzContext.Subscription.Id
@@ -81,7 +81,7 @@ New-AzResourceGroup -Name $imageResourceGroup -Location $location
 ### Create user identity
 ```powerShell
 # setup role def names, these need to be unique
-$timeInt=$(get-date -UFormat "%s")
+$timeInt=$(get-date -UFormat "%S")
 $imageRoleDefName="Azure Image Builder Image Def"+$timeInt
 $identityName="aibIdentity"+$timeInt
 
