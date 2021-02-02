@@ -58,7 +58,7 @@ Import-Module Az.Accounts
 $currentAzContext = Get-AzContext
 
 # destination image resource group
-$imageResourceGroup="aibWinImg01"
+$imageResourceGroup="aibwinsig01"
 
 # location (see possible locations in main docs)
 $location="westus"
