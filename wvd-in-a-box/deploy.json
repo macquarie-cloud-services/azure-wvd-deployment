@@ -68,6 +68,7 @@
         "vnetAddressPrefix": "[parameters('vnetAddressPrefix')]",
         "subnetAddressPrefix": "[parameters('subnetAddressPrefix')]",
         "domainName": "[parameters('domainName')]",
+        "vmNamePrefix": "[concat(parameters('customerName'),'wvd')]",
         "hostpoolname": "[concat(parameters('customerName'),'-wvdpool01')]",
         "hostpoolVMSize": "[parameters('hostpoolVMSize')]",
         "sigGalleryName": "[concat(parameters('customerName'),'wvdsig01')]",
@@ -101,6 +102,10 @@
             {
                 "name": "ResourceGroupName",
                 "value": "[concat('\"',variables('rgName'),'\"')]"
+            },
+            {
+                "name": "vmNamePrefix",
+                "value": "[concat('\"',variables('vmNamePrefix'),'\"')]"
             },
             {
                 "name": "hostpoolname",
