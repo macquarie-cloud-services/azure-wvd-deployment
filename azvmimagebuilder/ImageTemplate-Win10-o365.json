@@ -90,7 +90,7 @@
                         "runOutputName": "<runOutputName>",
                         "artifactTags": {
                             "source": "azVmImageBuilder",
-                            "baseosimg": "windows2019"
+                            "baseosimg": "office-365"
                         }
                     }
                 ]
