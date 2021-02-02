@@ -21,7 +21,7 @@
             "location": "[parameters('svclocation')]",
             "dependsOn": [],
             "tags": {
-                    "imagebuilderTemplate": "office-365",
+                    "imagebuilderTemplate": "AzureImageBuilderSIG",
                     "userIdentity": "enabled"
                 },
                 "identity": {
@@ -31,7 +31,7 @@
                             }
                 },
             "properties": {
-                "buildTimeoutInMinutes" : 100,
+                "buildTimeoutInMinutes" : 200,
                 "vmProfile": 
                 {
                     "vmSize": "Standard_D1_v2",
@@ -84,14 +84,16 @@
                 "distribute": 
                 [
                     {
-                        "type":"ManagedImage",
-                        "imageId": "/subscriptions/<subscriptionID>/resourceGroups/<rgName>/providers/Microsoft.Compute/images/<imageName>",
-                        "location": "<region>",
+                        "type": "SharedImage",
+                        "galleryImageId": "/subscriptions/<subscriptionID>/resourceGroups/<rgName>/providers/Microsoft.Compute/galleries/<sharedImageGalName>/images/<imageDefName>",
                         "runOutputName": "<runOutputName>",
                         "artifactTags": {
                             "source": "azVmImageBuilder",
                             "baseosimg": "office-365"
-                        }
+                        },
+                        "replicationRegions": [
+                          "eastus"
+                        ]
                     }
                 ]
             }
