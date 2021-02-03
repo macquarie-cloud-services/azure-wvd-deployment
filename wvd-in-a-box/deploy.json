@@ -44,6 +44,20 @@
                 "description": "Size of each VM in the WVD Host Pool."
             }
         },
+        "optionalGalleryImageDef": {
+            "type": "string",
+            "metadata": {
+                "description": "Shared Image Gallery Image Definition. eg. office-365"
+            },
+            "defaultValue": ""
+        },
+        "optionalGalleryImageVersion": {
+            "type": "string",
+            "metadata": {
+                "description": "Shared Image Gallery Image version. eg. 1.0.0"
+            },
+            "defaultValue": ""
+        },
         "optionalNotificationEmail": {
             "type": "string",
             "metadata": {
@@ -72,6 +86,7 @@
         "hostpoolname": "[concat(parameters('customerName'),'-wvdpool01')]",
         "hostpoolVMSize": "[parameters('hostpoolVMSize')]",
         "sigGalleryName": "[concat(parameters('customerName'),'wvdsig01')]",
+        "customImageReferenceId": "[concat('/subscriptions/', subscription().id, '/resourceGroups/', resourcegroup().name, '/providers/Microsoft.Compute/galleries/', variables('sigGalleryName'), '/images/', parameters('optionalGalleryImageDef'), '/versions/', parameters('optionalGalleryImageVersion'))]",
         "identityName": "WVDServicePrincipal",
         "location": "[resourcegroup().location]",
         "rgName": "[resourcegroup().name]",
@@ -121,7 +136,7 @@
             },
             {
                 "name": "customImageReferenceId",
-                "value": "[concat('\"',variables('customImageReferenceId'),'\"')]"
+                "value": "[if(not(empty(parameters('optionalGalleryImageDef')))), [concat('\"',variables('customImageReferenceId'),'\"')], [concat('\"','\"')]]"
             },
             {
                 "name": "fileURI",
