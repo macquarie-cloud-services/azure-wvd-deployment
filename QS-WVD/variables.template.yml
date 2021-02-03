@@ -62,7 +62,7 @@ variables:
 ## Hostpool
 #customImageReferenceId, as value, put: '/subscriptions/<subscriptionId>/resourceGroups/<image-resource-group-name>/providers/Microsoft.Compute/galleries/<SIG name>/images/<image name>/versions/<version>'
 - name: customImageReferenceId
-  value: ''
+  value: "[customImageReferenceId]"
 
 - name: publisher
   value: "MicrosoftWindowsDesktop"
