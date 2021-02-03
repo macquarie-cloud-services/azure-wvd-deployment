@@ -120,6 +120,10 @@
                 "value": "[concat('\"',variables('sigGalleryName'),'\"')]"
             },
             {
+                "name": "customImageReferenceId",
+                "value": "[concat('\"',variables('customImageReferenceId'),'\"')]"
+            },
+            {
                 "name": "fileURI",
                 "value": "[concat('\"',variables('_artifactsLocation'),'\"')]"
             },
