@@ -55,10 +55,10 @@ Import-Module Az.Accounts
 $currentAzContext = Get-AzContext
 
 # destination image resource group
-$imageResourceGroup="aibwinsig01"
+$imageResourceGroup="mcsaibsig01"
 
 # location (see possible locations in main docs)
-$location="westus2"
+$location="eastus"
 
 # your subscription, this will get your current subscription
 $subscriptionID=$currentAzContext.Subscription.Id
@@ -124,11 +124,11 @@ https://docs.microsoft.com/en-us/azure/role-based-access-control/troubleshooting
 ## Step 3 : Create the Shared Image Gallery
 
 ```powerShell
-$sigGalleryName= "aibsig01"
-$imageDefName ="wvdimages"
+$sigGalleryName= "mcsaibsig01"
+$imageDefName ="win10-o365-images"
 
 # additional replication region
-$replRegion2="eastus"
+$replRegion2="australiaeast"
 
 # create gallery
 New-AzGallery -GalleryName $sigGalleryName -ResourceGroupName $imageResourceGroup  -Location $location
