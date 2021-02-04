@@ -146,7 +146,7 @@
             },
             {
                 "name": "customImageReferenceId",
-                "value": "[if(not(empty(parameters('optionalGalleryImageDef'))), [concat('\"',variables('customImageReferenceId'),'\"')], [concat('\"','\"')]])"
+                "value": "[if(not(empty(parameters('optionalGalleryImageDef'))), [concat('\"',variables('customImageReferenceId'),'\"')], [concat('\"','\"')])]"
             },
             {
                 "name": "fileURI",
