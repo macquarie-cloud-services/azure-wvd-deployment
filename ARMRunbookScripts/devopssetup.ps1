@@ -26,6 +26,13 @@ $location = Get-AutomationVariable -Name 'location'
 $adminUsername = Get-AutomationVariable -Name 'adminUsername'
 $domainName = Get-AutomationVariable -Name 'domainName'
 $keyvaultName = Get-AutomationVariable -Name 'keyvaultName'
+$vmNamePrefix = Get-AutomationVariable -Name 'vmNamePrefix'
+$hostpoolname = Get-AutomationVariable -Name 'hostpoolname'
+$hostpoolVMSize = Get-AutomationVariable -Name 'hostpoolVMSize'
+$sigGalleryName = Get-AutomationVariable -Name 'sigGalleryName'
+$galleryImageDef = Get-AutomationVariable -Name 'galleryImageDef' -ErrorAction "SilentlyContinue"
+$galleryImageVersion = Get-AutomationVariable -Name 'galleryImageVersion' -ErrorAction "SilentlyContinue"
+$customImageReferenceId = Get-AutomationVariable -Name 'customImageReferenceId' -ErrorAction "SilentlyContinue"
 $wvdAssetsStorage = Get-AutomationVariable -Name 'assetsName'
 $profilesStorageAccountName = Get-AutomationVariable -Name 'profilesName'
 $ObjectId = Get-AutomationVariable -Name 'ObjectId'
@@ -43,7 +50,7 @@ $notificationEmail = Get-AutomationVariable -Name 'notificationEmail'
 $FileNames = "msft-wvd-saas-api.zip,msft-wvd-saas-web.zip,AzureModules.zip"
 $SplitFilenames = $FileNames.split(",")
 foreach($Filename in $SplitFilenames){
-Invoke-WebRequest -Uri "$fileURI/ARMRunbookScripts/static/$Filename" -OutFile "C:\$Filename"
+   Invoke-WebRequest -Uri "$fileURI/ARMRunbookScripts/static/$Filename" -OutFile "C:\$Filename"
 }
 
 #New-Item -Path "C:\msft-wvd-saas-offering" -ItemType directory -Force -ErrorAction SilentlyContinue
@@ -94,6 +101,21 @@ if ($context -eq $null)
 {
 	Write-Error "Please authenticate to Azure & Azure AD using Login-AzAccount and Connect-AzureAD cmdlets and then run this script"
 	exit
+}
+
+If ($galleryImageDef) {
+    # Custom image specified. This will copy the specified image from the MCS Shared Image Gallery to the local Gallery.
+    $webhookURI = "https://7a4033cc-74d4-4c27-a5e8-399fc47e1eb5.webhook.ase.azure-automation.net/webhooks?token=BmTRhlH39uwIgeN2IgR0uT4rnbhXFKgwaeiRVokuCKk%3d"
+    $payload = @{
+	  "subscriptionId" = $SubscriptionId
+	  "location" = $location
+	  "sigGalleryName" = $sigGalleryName
+	  "resourceGroupName" = $ResourceGroupName
+	  "galleryImageDef" = $galleryImageDef
+	  "galleryImageVersion" = $galleryImageVersion
+    }
+    write-output "`nSending webhook to initiate Shared Image Gallery image copy to gallery $sigGalleryName ..."
+    Invoke-WebRequest -UseBasicParsing -Body (ConvertTo-Json -Compress -InputObject $payload) -Method Post -Uri $webhookURI
 }
 
 # Get token for web request authorization
@@ -291,6 +313,8 @@ $content = $content.Replace("[location]", $location)
 $content = $content.Replace("[adminUsername]", $adminUsername)
 $content = $content.Replace("[domainName]", $domainName)
 $content = $content.Replace("[keyVaultName]", $keyvaultName)
+$content = $content.Replace("[hostpoolname]", $hostpoolname)
+$content = $content.Replace("[customImageReferenceId]", $customImageReferenceId)
 $content = $content.Replace("[wvdAssetsStorage]", $wvdAssetsStorage)
 $content = $content.Replace("[resourceGroupName]", $ResourceGroupName)
 $content = $content.Replace("[profilesStorageAccountName]", $profilesStorageAccountName)
@@ -317,6 +341,10 @@ $parameters = $parameters.Replace("[location]", $location)
 $parameters = $parameters.Replace("[adminUsername]", $adminUsername)
 $parameters = $parameters.Replace("[domainName]", $domainName)
 $parameters = $parameters.Replace("[keyVaultName]", $keyvaultName)
+$parameters = $parameters.Replace("[vmNamePrefix]", $vmNamePrefix)
+$parameters = $parameters.Replace("[hostpoolname]", $hostpoolname)
+$parameters = $parameters.Replace("[hostpoolVMSize]", $hostpoolVMSize)
+$parameters = $parameters.Replace("[sigGalleryName]", $sigGalleryName)
 $parameters = $parameters.Replace("[assetsName]", $wvdAssetsStorage)
 $parameters = $parameters.Replace("[profilesName]", $profilesStorageAccountName)
 $parameters = $parameters.Replace("[resourceGroupName]", $ResourceGroupName)
