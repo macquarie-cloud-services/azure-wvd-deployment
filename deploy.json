@@ -2,6 +2,12 @@
     "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
     "contentVersion": "1.0.0.0",
     "parameters": {
+        "customerName": {
+            "type": "string",
+            "metadata": {
+            "description": "Customer short name."
+            }
+        }, 
         "existingVnetName": {
             "type": "string",
             "metadata": {
@@ -61,6 +67,26 @@
                 "Azure AD DS"
             ]
         },
+        "hostpoolVMSize": {
+            "type": "string",
+            "metadata": {
+                "description": "Size of each VM in the WVD Host Pool."
+            }
+        },
+        "optionalGalleryImageDef": {
+            "type": "string",
+            "metadata": {
+                "description": "Shared Image Gallery Image Definition. eg. office-365"
+            },
+            "defaultValue": ""
+        },
+        "optionalGalleryImageVersion": {
+            "type": "string",
+            "metadata": {
+                "description": "Shared Image Gallery Image version. eg. 1.0.0"
+            },
+            "defaultValue": ""
+        },
         "optionalNotificationEmail": {
             "type": "string",
             "metadata": {
@@ -81,20 +107,29 @@
         "AdminPasswordSecret": "adminPassword",
         "existingDomainUsername": "[first(split(parameters('DomainJoinAccountUPN'), '@'))]",
         "existingDomainName": "[split(parameters('DomainJoinAccountUPN'), '@')[1]]",
+        "vmNamePrefix": "[concat(parameters('customerName'),'wvd')]",
+        "hostpoolname": "[concat(parameters('customerName'),'-wvdpool01')]",
+        "hostpoolVMSize": "[parameters('hostpoolVMSize')]",
+        "sigGalleryName": "[concat(parameters('customerName'),'wvdsig01')]",
+        "galleryImageDef": "[parameters('optionalGalleryImageDef')]",
+        "galleryImageVersion": "[parameters('optionalGalleryImageVersion')]",
+        "customImageReferenceId": "[concat(subscription().id, '/resourceGroups/', resourcegroup().name, '/providers/Microsoft.Compute/galleries/', variables('sigGalleryName'), '/images/', variables('galleryImageDef'), '/versions/', variables('galleryImageVersion'))]",
+        "varCustomImageReferenceId": "[concat('\"',variables('customImageReferenceId'),'\"')]",
+        "varEmpty": "[concat('\"','\"')]",
         "identityName": "WVDServicePrincipal",
         "location": "[resourcegroup().location]",
         "rgName": "[resourcegroup().name]",
-        "keyvaultName": "[concat('keyvault', parameters('utcValue'))]",
-        "assetsName": "[concat('assets', toLower(skip(parameters('utcValue'), 4)))]",
-        "profilesName": "[concat('profiles', toLower(skip(parameters('utcValue'), 4)))]",
-        "autoAccountName": "[concat('automation', toLower(skip(parameters('utcValue'), 9)))]",
+        "keyvaultName": "[concat(parameters('customerName'),'-wvdkv', toLower(skip(parameters('utcValue'), 9)))]",
+        "assetsName": "[concat(parameters('customerName'),'wvdassets')]",
+        "profilesName": "[concat(parameters('customerName'),'wvdprofiles')]",
+        "autoAccountName": "[concat(parameters('customerName'), '-wvd-automation')]",
         "tenantId": "[subscription().tenantId]",
         "jobGuid0": "[guid(toLower(uniquestring(variables('identityName'), resourceGroup().id, parameters('utcValue'),'credentials')))]",
         "jobGuid": "[guid(toLower(uniquestring(variables('identityName'), resourceGroup().id, parameters('utcValue'),variables('autoAccountName'))))]",
         "jobGuid2": "[guid(toLower(uniquestring(variables('identityName'), subscription().id, parameters('utcValue'),'devOpsSetup')))]",
-        "devOpsName": "[concat('WVDQuickStartOrg', skip(parameters('utcValue'), 9))]",   
-        "devOpsProjectName": "[concat('WVDQuickStartProj', skip(parameters('utcValue'), 9))]",
-        "targetGroup": "WVDTestUsers",
+        "devOpsName": "[concat(parameters('customerName'), 'WVD', skip(parameters('utcValue'), 9))]",
+        "devOpsProjectName": "[concat(parameters('customerName'),'WVDProj', skip(parameters('utcValue'), 9))]",
+        "targetGroup": "WVDUsers",
         "automationVariables": [
             {
                 "name": "subscriptionid",
@@ -111,6 +146,34 @@
             {
                 "name": "ResourceGroupName",
                 "value": "[concat('\"',variables('rgName'),'\"')]"
+            },
+            {
+                "name": "vmNamePrefix",
+                "value": "[concat('\"',variables('vmNamePrefix'),'\"')]"
+            },
+            {
+                "name": "hostpoolname",
+                "value": "[concat('\"',variables('hostpoolname'),'\"')]"
+            },
+            {
+                "name": "hostpoolVMSize",
+                "value": "[concat('\"',variables('hostpoolVMSize'),'\"')]"
+            },
+            {
+                "name": "sigGalleryName",
+                "value": "[concat('\"',variables('sigGalleryName'),'\"')]"
+            },
+            {
+                "name": "galleryImageDef",
+                "value": "[concat('\"',variables('galleryImageDef'),'\"')]"
+            },
+            {
+                "name": "galleryImageVersion",
+                "value": "[concat('\"',variables('galleryImageVersion'),'\"')]"
+            },
+            {
+                "name": "customImageReferenceId",
+                "value": "[if(not(empty(parameters('optionalGalleryImageDef'))), variables('varCustomImageReferenceId'), variables('varEmpty'))]"
             },
             {
                 "name": "fileURI",
@@ -484,6 +547,15 @@
                 "timeout": "PT30M",
                 "cleanupPreference": "OnSuccess",
                 "retentionInterval": "P1D"
+            }
+        },
+        {
+            "type": "Microsoft.Compute/galleries",
+            "name": "[variables('sigGalleryName')]",
+            "apiVersion": "2019-12-01",
+            "location": "[variables('location')]",
+            "properties": {
+                "description": "WVD Shared Image Gallery"
             }
         },
         {
