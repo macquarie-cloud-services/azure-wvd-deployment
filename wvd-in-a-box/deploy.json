@@ -88,7 +88,7 @@
         "sigGalleryName": "[concat(parameters('customerName'),'wvdsig01')]",
         "galleryImageDef": "[parameters('optionalGalleryImageDef')]",
         "galleryImageVersion": "[parameters('optionalGalleryImageVersion')]",
-        "customImageReferenceId": "[concat('/subscriptions/', subscription().id, '/resourceGroups/', resourcegroup().name, '/providers/Microsoft.Compute/galleries/', variables('sigGalleryName'), '/images/', variables('galleryImageDef'), '/versions/', variables('galleryImageVersion'))]",
+        "customImageReferenceId": "[concat(subscription().id, '/resourceGroups/', resourcegroup().name, '/providers/Microsoft.Compute/galleries/', variables('sigGalleryName'), '/images/', variables('galleryImageDef'), '/versions/', variables('galleryImageVersion'))]",
         "varCustomImageReferenceId": "[concat('\"',variables('customImageReferenceId'),'\"')]",
         "varEmpty": "[concat('\"','\"')]",
         "identityName": "WVDServicePrincipal",
