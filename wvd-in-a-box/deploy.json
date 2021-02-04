@@ -89,6 +89,8 @@
         "galleryImageDef": "[parameters('optionalGalleryImageDef')]",
         "galleryImageVersion": "[parameters('optionalGalleryImageVersion')]",
         "customImageReferenceId": "[concat('/subscriptions/', subscription().id, '/resourceGroups/', resourcegroup().name, '/providers/Microsoft.Compute/galleries/', variables('sigGalleryName'), '/images/', variables('galleryImageDef'), '/versions/', variables('galleryImageVersion'))]",
+        "varCustomImageReferenceId": "[concat('\"',variables('customImageReferenceId'),'\"')]",
+        "varEmpty": "[concat('\"','\"')]",
         "identityName": "WVDServicePrincipal",
         "location": "[resourcegroup().location]",
         "rgName": "[resourcegroup().name]",
@@ -146,7 +148,7 @@
             },
             {
                 "name": "customImageReferenceId",
-                "value": "[if(not(empty(parameters('optionalGalleryImageDef'))), [concat('\"',variables('customImageReferenceId'),'\"')], [concat('\"','\"')])]"
+                "value": "[if(not(empty(parameters('optionalGalleryImageDef'))), variables('varCustomImageReferenceId'), variables('varEmpty'))]"
             },
             {
                 "name": "fileURI",
