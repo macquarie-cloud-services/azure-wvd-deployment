@@ -86,7 +86,9 @@
         "hostpoolname": "[concat(parameters('customerName'),'-wvdpool01')]",
         "hostpoolVMSize": "[parameters('hostpoolVMSize')]",
         "sigGalleryName": "[concat(parameters('customerName'),'wvdsig01')]",
-        "customImageReferenceId": "[concat('/subscriptions/', subscription().id, '/resourceGroups/', resourcegroup().name, '/providers/Microsoft.Compute/galleries/', variables('sigGalleryName'), '/images/', parameters('optionalGalleryImageDef'), '/versions/', parameters('optionalGalleryImageVersion'))]",
+        "galleryImageDef": "[parameters('optionalGalleryImageDef')]",
+        "galleryImageVersion": "[parameters('optionalGalleryImageVersion')]",
+        "customImageReferenceId": "[concat('/subscriptions/', subscription().id, '/resourceGroups/', resourcegroup().name, '/providers/Microsoft.Compute/galleries/', variables('sigGalleryName'), '/images/', variables('galleryImageDef'), '/versions/', variables('galleryImageVersion'))]",
         "identityName": "WVDServicePrincipal",
         "location": "[resourcegroup().location]",
         "rgName": "[resourcegroup().name]",
@@ -133,6 +135,14 @@
             {
                 "name": "sigGalleryName",
                 "value": "[concat('\"',variables('sigGalleryName'),'\"')]"
+            },
+            {
+                "name": "galleryImageDef",
+                "value": "[concat('\"',variables('galleryImageDef'),'\"')]"
+            },
+            {
+                "name": "galleryImageVersion",
+                "value": "[concat('\"',variables('galleryImageVersion'),'\"')]"
             },
             {
                 "name": "customImageReferenceId",
