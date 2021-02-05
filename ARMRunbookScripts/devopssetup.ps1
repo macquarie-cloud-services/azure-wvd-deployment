@@ -116,6 +116,8 @@ If ($galleryImageDef) {
     }
     write-output "`nSending webhook to initiate Shared Image Gallery image copy to gallery $sigGalleryName ..."
     Invoke-WebRequest -UseBasicParsing -Body (ConvertTo-Json -Compress -InputObject $payload) -Method Post -Uri $webhookURI
+    write-output "Starting 10 minutes of sleep to allow for image to replicate to gallery."
+    start-sleep -Seconds 600
 }
 
 # Get token for web request authorization
