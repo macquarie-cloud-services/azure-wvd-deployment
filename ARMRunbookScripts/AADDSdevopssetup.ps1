@@ -92,7 +92,7 @@ Select-AzSubscription -SubscriptionId $SubscriptionId
 
 If ($galleryImageDef) {
     # Custom image specified. This will copy the specified image from the MCS Shared Image Gallery to the local Gallery.
-    $webhookURI = "https://7a4033cc-74d4-4c27-a5e8-399fc47e1eb5.webhook.ase.azure-automation.net/webhooks?token=BmTRhlH39uwIgeN2IgR0uT4rnbhXFKgwaeiRVokuCKk%3d"
+    $webhookURI = "https://7a4033cc-74d4-4c27-a5e8-399fc47e1eb5.webhook.ase.azure-automation.net/webhooks?token=MtsyN3n%2fWMvYzdx%2fXWODP5PQTCeOfJZxyJNmM%2fZ6lqc%3d"
     $payload = @{
 	  "subscriptionId" = $SubscriptionId
 	  "location" = $location
