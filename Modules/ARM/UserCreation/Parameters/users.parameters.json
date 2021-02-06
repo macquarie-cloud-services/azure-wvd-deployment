@@ -3,7 +3,7 @@
         {
             "createUser": false,
             "createGroup": true,
-            "assignUsers": true,
+            "assignUsers": false,
             "syncAD": true,
             "userName": "WVDTestUser001"
         }
