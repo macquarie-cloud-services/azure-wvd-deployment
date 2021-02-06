@@ -82,12 +82,9 @@
         "optionalGalleryImageDef": {
             "type": "string",
             "metadata": {
-                "description": "Shared Image Gallery Image Definition. eg. office-365"
+                "description": "Shared Image Gallery Image Definition. eg. win10-o365-images"
             },
-            "allowedValues": [
-                "",
-                "win10-o365-images"
-            ]
+            "defaultValue": ""
         },
         "optionalGalleryImageVersion": {
             "type": "string",
