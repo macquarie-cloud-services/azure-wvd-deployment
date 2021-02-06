@@ -1,7 +1,7 @@
 {
     "userconfig": [
         {
-            "createUser": true,
+            "createUser": false,
             "createGroup": true,
             "assignUsers": true,
             "syncAD": true,
