@@ -84,7 +84,10 @@
             "metadata": {
                 "description": "Shared Image Gallery Image Definition. eg. office-365"
             },
-            "defaultValue": ""
+            "allowedValues": [
+                "",
+                "win10-o365-images"
+            ]
         },
         "optionalGalleryImageVersion": {
             "type": "string",
