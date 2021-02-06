@@ -57,6 +57,12 @@
                 "description": "The password that corresponds to the domain join account UPN."
             }
         },
+        "wvdUserGroup": {
+            "type": "string",
+            "metadata": {
+                "description": "Existing or new AD Group for WVD Users. Group will be created if doesn't exist. Users in this group will automatically get access to WVD."
+            }
+        },
         "identityApproach": {
             "type": "string",
             "metadata": {
@@ -129,7 +135,7 @@
         "jobGuid2": "[guid(toLower(uniquestring(variables('identityName'), subscription().id, parameters('utcValue'),'devOpsSetup')))]",
         "devOpsName": "[concat(parameters('customerName'), 'WVD', skip(parameters('utcValue'), 9))]",
         "devOpsProjectName": "[concat(parameters('customerName'),'WVDProj', skip(parameters('utcValue'), 9))]",
-        "targetGroup": "WVDUsers",
+        "targetGroup": "[parameters('wvdUserGroup')]",
         "automationVariables": [
             {
                 "name": "subscriptionid",
