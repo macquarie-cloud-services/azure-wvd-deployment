@@ -116,8 +116,8 @@ If ($galleryImageDef) {
     }
     write-output "`nSending webhook to initiate Shared Image Gallery image copy to gallery $sigGalleryName ..."
     Invoke-WebRequest -UseBasicParsing -Body (ConvertTo-Json -Compress -InputObject $payload) -Method Post -Uri $webhookURI
-    write-output "Starting 20 minutes of sleep to allow for image to replicate to gallery. Average time to complete is 22 minutes."
-    start-sleep -Seconds 1200
+    write-output "Starting 15 minutes of sleep to allow for image to replicate to gallery. Average time to complete is 15 minutes."
+    start-sleep -Seconds 900
     # Check provisioning status of image
     $sigProvStatus = (Get-AzGalleryImageVersion -ResourceId $customImageReferenceId -ExpandReplicationStatus).ProvisioningState
     $timer = 0
