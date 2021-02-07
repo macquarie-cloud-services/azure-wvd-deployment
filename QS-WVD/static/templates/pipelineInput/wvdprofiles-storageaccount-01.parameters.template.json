@@ -6,7 +6,7 @@
       "value": "[profilesStorageAccountName]"
     },
     "storageAccountKind": {
-      "value": "StorageV2"
+      "value": "[storageAccountKind]"
     },
     "storageAccountSku": {
       "value": "[storageAccountSku]"
