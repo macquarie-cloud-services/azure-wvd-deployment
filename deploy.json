@@ -87,7 +87,13 @@
                 "standard_d4s_v4",
                 "standard_e2s_v4"
             ]
-        },   
+        },
+        "hostpoolVMCount": {
+            "type": "string",
+            "metadata": {
+                "description": "Number of VM in the WVD Host Pool to provision."
+            }
+        },
         "storageAccountSku": {
             "type": "string",
             "metadata": {
@@ -135,6 +141,7 @@
         "vmNamePrefix": "[concat(parameters('customerName'),'wvd')]",
         "hostpoolname": "[concat(parameters('customerName'),'-wvdpool01')]",
         "hostpoolVMSize": "[parameters('hostpoolVMSize')]",
+        "hostpoolVMCount": "[parameters('hostpoolVMCount')]",
         "storageAccountSku": "[parameters('storageAccountSku')]",
         "sigGalleryName": "[concat(parameters('customerName'),'wvdsig01')]",
         "galleryImageDef": "[parameters('optionalGalleryImageDef')]",
@@ -184,6 +191,10 @@
             {
                 "name": "hostpoolVMSize",
                 "value": "[concat('\"',variables('hostpoolVMSize'),'\"')]"
+            },
+            {
+                "name": "hostpoolVMCount",
+                "value": "[concat('\"',variables('hostpoolVMCount'),'\"')]"
             },
             {
                 "name": "storageAccountSku",
