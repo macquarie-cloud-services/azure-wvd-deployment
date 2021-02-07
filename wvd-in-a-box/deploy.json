@@ -43,6 +43,16 @@
             "metadata": {
                 "description": "Size of each VM in the WVD Host Pool."
             }
+        },   
+        "storageAccountSku": {
+            "type": "string",
+            "metadata": {
+                "description": "Storage SKU for profiles. Choose ZRS if region has Availability Zones."
+            },
+            "allowedValues": [
+                "Premium_ZRS",
+                "Premium_LRS"
+            ]
         },
         "optionalGalleryImageDef": {
             "type": "string",
@@ -85,6 +95,7 @@
         "vmNamePrefix": "[concat(parameters('customerName'),'wvd')]",
         "hostpoolname": "[concat(parameters('customerName'),'-wvdpool01')]",
         "hostpoolVMSize": "[parameters('hostpoolVMSize')]",
+        "storageAccountSku": "[parameters('storageAccountSku')]",
         "sigGalleryName": "[concat(parameters('customerName'),'wvdsig01')]",
         "galleryImageDef": "[parameters('optionalGalleryImageDef')]",
         "galleryImageVersion": "[parameters('optionalGalleryImageVersion')]",
@@ -133,6 +144,10 @@
             {
                 "name": "hostpoolVMSize",
                 "value": "[concat('\"',variables('hostpoolVMSize'),'\"')]"
+            },
+            {
+                "name": "storageAccountSku",
+                "value": "[concat('\"',variables('storageAccountSku'),'\"')]"
             },
             {
                 "name": "sigGalleryName",
