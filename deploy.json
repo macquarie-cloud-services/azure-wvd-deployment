@@ -77,7 +77,16 @@
             "type": "string",
             "metadata": {
                 "description": "Size of each VM in the WVD Host Pool."
-            }
+            },
+            "allowedValues": [
+                "standard_b2s",
+                "standard_d2s_v3",
+                "standard_d4s_v3",
+                "standard_e2s_v3",
+                "standard_d2s_v4",
+                "standard_d4s_v4",
+                "standard_e2s_v4"
+            ]
         },   
         "storageAccountSku": {
             "type": "string",
