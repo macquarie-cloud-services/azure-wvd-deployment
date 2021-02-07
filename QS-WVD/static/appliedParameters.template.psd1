@@ -21,8 +21,8 @@
     # =============== #
     wvdAssetsStorage                      = "[assetsName]"          # Name of assets storage account
     profilesStorageAccountName            = "[profilesName]"        # Name of the profiles storage account
-    storageAccountSku                     = "Standard_LRS"          # default, storage account SKU
-    storageAccountKind                    = "StorageV2"             # default, storage account type
+    storageAccountSku                     = "[storageAccountSku]"   # Storage account SKU. Recommended either Premium_ZRS if available in region or Premium_LRS
+    storageAccountKind                    = "FileStorage"           # default, storage account type
     profilesShareName                     = "wvdprofiles"           # Name of the file share in the profiles storage account where profiles will be stored
     ###################
 
