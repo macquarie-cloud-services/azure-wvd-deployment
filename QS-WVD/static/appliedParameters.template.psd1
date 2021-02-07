@@ -32,9 +32,9 @@
     hostpoolType                          = "Pooled"                            # Type of host pool, can be "Personal" or "Pooled" (default)
     maxSessionLimit                       = 16                                  # default
     loadBalancerType                      = "BreadthFirst"                      # Load-balancing algorithm
-    vmNamePrefix                          = "[vmNamePrefix]"                         # Prefix for the WVD VMs that will be deployed
-    vmSize                                = "[hostpoolVMSize]"                 # The VM SKU
-    vmNumberOfInstances                   = 2                                   # Number of VMs to be deployed
+    vmNamePrefix                          = "[vmNamePrefix]"                    # Prefix for the WVD VMs that will be deployed
+    vmSize                                = "[hostpoolVMSize]"                  # The VM SKU
+    vmNumberOfInstances                   = "[hostpoolVMCount]"                 # Number of VMs to be deployed
     vmInitialNumber                       = 1                                   # default
     diskSizeGB                            = 128                                 # Size of the VMs' disk
     vmDiskType                            = "Premium_LRS"                       # SKU of the above disk
