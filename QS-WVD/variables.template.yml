@@ -57,7 +57,7 @@ variables:
 
 ## Jobs
 - name: enableApplicationJob
-  value: true  # To enable/disable remote apps job
+  value: false  # To enable/disable remote apps job
 
 ## Hostpool
 #customImageReferenceId, as value, put: '/subscriptions/<subscriptionId>/resourceGroups/<image-resource-group-name>/providers/Microsoft.Compute/galleries/<SIG name>/images/<image name>/versions/<version>'
