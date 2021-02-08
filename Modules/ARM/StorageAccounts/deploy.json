@@ -795,13 +795,13 @@
                 "description": "The Access Key for the Storage Account."
             }
         },
-        "storageAccountPrimaryBlobEndpoint": {
-            "type": "string",
-            "value": "[reference(concat('Microsoft.Storage/storageAccounts/', variables('cleanStorageAccountName')), '2019-04-01').primaryEndpoints.blob]",
-            "metadata": {
-                "description": "The public endpoint of the Storage Account."
-            }
-        },
+        //"storageAccountPrimaryBlobEndpoint": {
+        //    "type": "string",
+        //    "value": "[reference(concat('Microsoft.Storage/storageAccounts/', variables('cleanStorageAccountName')), '2019-04-01').primaryEndpoints.blob]",
+        //    "metadata": {
+        //        "description": "The public endpoint of the Storage Account."
+        //    }
+        //},
         "blobContainers": {
             "type": "array",
             "value": "[parameters('blobContainers')]",
