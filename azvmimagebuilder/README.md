@@ -55,7 +55,7 @@ Import-Module Az.Accounts
 $currentAzContext = Get-AzContext
 
 # destination image resource group
-$imageResourceGroup="mcsaibsig01"
+$imageResourceGroup="mcs-aib-rg"
 
 # location (see possible locations in main docs)
 $location="eastus"
@@ -64,13 +64,13 @@ $location="eastus"
 $subscriptionID=$currentAzContext.Subscription.Id
 
 # name of the image to be created
-$imageName="win10-o365-image1"
+$imageName="win10-20h2-o365-image01"
 
 # image template name
-$imageTemplateName="win10-o365-Template01"
+$imageTemplateName="win10-20h2-o365-template01"
 
 # distribution properties object name (runOutput), i.e. this gives you the properties of the managed image on completion
-$runOutputName="win10-o365-img01-ro"
+$runOutputName="win10-20h2-o365-img01-ro"
 
 # create resource group
 New-AzResourceGroup -Name $imageResourceGroup -Location $location
@@ -124,8 +124,8 @@ https://docs.microsoft.com/en-us/azure/role-based-access-control/troubleshooting
 ## Step 3 : Create the Shared Image Gallery
 
 ```powerShell
-$sigGalleryName= "mcsaibsig01"
-$imageDefName ="win10-o365-images"
+$sigGalleryName= "mcs-aib-sig01"
+$imageDefName ="win10-20h2-o365-images"
 
 # additional replication region
 $replRegion2="australiaeast"
@@ -134,7 +134,7 @@ $replRegion2="australiaeast"
 New-AzGallery -GalleryName $sigGalleryName -ResourceGroupName $imageResourceGroup  -Location $location
 
 # create gallery definition
-New-AzGalleryImageDefinition -GalleryName $sigGalleryName -ResourceGroupName $imageResourceGroup -Location $location -Name $imageDefName -OsState generalized -OsType Windows -Publisher 'MicrosoftWindowsDesktop' -Offer 'office-365' -Sku 'rs5-evd-o365pp'
+New-AzGalleryImageDefinition -GalleryName $sigGalleryName -ResourceGroupName $imageResourceGroup -Location $location -Name $imageDefName -OsState generalized -OsType Windows -Publisher 'MicrosoftWindowsDesktop' -Offer 'office-365' -Sku '20h2-evd-o365pp'
 
 ```
 
