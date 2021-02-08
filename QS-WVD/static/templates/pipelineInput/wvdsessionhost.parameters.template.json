@@ -6,7 +6,7 @@
             "value": "[vmNamePrefix]"
         },
         "vmNumberOfInstances": {
-            "value": 2
+            "value": "[hostpoolVMCount]"
         },
         "vmInitialNumber": {
             "value": 1
@@ -42,6 +42,9 @@
                 },
                 "secretName": "[AdminPasswordSecret]"
             }
+        },
+        "useAvailabilityZone": {
+            "value": "[useAvailabilityZone]"
         },
         "availabilitySetName": {
             "value": ""
