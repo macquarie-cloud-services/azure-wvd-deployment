@@ -55,22 +55,22 @@ Import-Module Az.Accounts
 $currentAzContext = Get-AzContext
 
 # destination image resource group
-$imageResourceGroup="mcs-aib-rg"
+$imageResourceGroup = "mcs-aib-rg"
 
 # location (see possible locations in main docs)
-$location="eastus"
+$location = "eastus"
 
 # your subscription, this will get your current subscription
-$subscriptionID=$currentAzContext.Subscription.Id
+$subscriptionID = $currentAzContext.Subscription.Id
 
 # name of the image to be created
-$imageName="win10-20h2-o365-image01"
+$imageName = "win10-20h2-o365-image01"
 
 # image template name
-$imageTemplateName="win10-20h2-o365-template01"
+$imageTemplateName = "win10-20h2-o365-template01"
 
 # distribution properties object name (runOutput), i.e. this gives you the properties of the managed image on completion
-$runOutputName="win10-20h2-o365-img01-ro"
+$runOutputName = "win10-20h2-o365-img01-ro"
 
 # create resource group
 New-AzResourceGroup -Name $imageResourceGroup -Location $location
@@ -81,9 +81,9 @@ New-AzResourceGroup -Name $imageResourceGroup -Location $location
 ### Create user identity
 ```powerShell
 # setup role def names, these need to be unique
-$timeInt=$(get-date -UFormat "%S")
-$imageRoleDefName="Azure Image Builder Image Def"+$timeInt
-$identityName="aibIdentity"+$timeInt
+$timeInt = $(get-date -UFormat "%S")
+$imageRoleDefName = "Azure Image Builder Image Def"+$timeInt
+$identityName = "aibIdentity"+$timeInt
 
 ## Add AZ PS module to support AzUserAssignedIdentity
 Install-Module -Name Az.ManagedServiceIdentity
@@ -91,15 +91,15 @@ Install-Module -Name Az.ManagedServiceIdentity
 # create identity
 New-AzUserAssignedIdentity -ResourceGroupName $imageResourceGroup -Name $identityName
 
-$identityNameResourceId=$(Get-AzUserAssignedIdentity -ResourceGroupName $imageResourceGroup -Name $identityName).Id
-$identityNamePrincipalId=$(Get-AzUserAssignedIdentity -ResourceGroupName $imageResourceGroup -Name $identityName).PrincipalId
+$identityNameResourceId = $(Get-AzUserAssignedIdentity -ResourceGroupName $imageResourceGroup -Name $identityName).Id
+$identityNamePrincipalId = $(Get-AzUserAssignedIdentity -ResourceGroupName $imageResourceGroup -Name $identityName).PrincipalId
 
 ```
 
 ### Assign permissions for identity to distribute images
 This command will download and update the template with the parameters specified earlier.
 ```powerShell
-$aibRoleImageCreationUrl="https://raw.githubusercontent.com/macquarie-cloud-services/azure-wvd-deployment/master/azvmimagebuilder/aibRoleImageCreation.json"
+$aibRoleImageCreationUrl = "https://raw.githubusercontent.com/macquarie-cloud-services/azure-wvd-deployment/master/azvmimagebuilder/aibRoleImageCreation.json"
 $aibRoleImageCreationPath = "aibRoleImageCreation.json"
 
 # download config
@@ -110,7 +110,7 @@ Invoke-WebRequest -Uri $aibRoleImageCreationUrl -OutFile $aibRoleImageCreationPa
 ((Get-Content -path $aibRoleImageCreationPath -Raw) -replace 'Azure Image Builder Service Image Creation Role', $imageRoleDefName) | Set-Content -Path $aibRoleImageCreationPath
 
 # create role definition. May take 5 minutes to register new role definition.
-New-AzRoleDefinition -InputFile  ./aibRoleImageCreation.json
+New-AzRoleDefinition -InputFile ./aibRoleImageCreation.json
 
 # grant role definition to image builder service principal
 New-AzRoleAssignment -ObjectId $identityNamePrincipalId -RoleDefinitionName $imageRoleDefName -Scope "/subscriptions/$subscriptionID/resourceGroups/$imageResourceGroup"
@@ -124,17 +124,18 @@ https://docs.microsoft.com/en-us/azure/role-based-access-control/troubleshooting
 ## Step 3 : Create the Shared Image Gallery
 
 ```powerShell
-$sigGalleryName= "mcs-aib-sig01"
-$imageDefName ="win10-20h2-o365-images"
+$sigGalleryName = "mcs-aib-sig01"
+$imageDefName = "win10-20h2-o365-images"
+$osSKU = "20h2-evd-o365pp"
 
 # additional replication region
-$replRegion2="australiaeast"
+$replRegion2 = "australiaeast"
 
 # create gallery
 New-AzGallery -GalleryName $sigGalleryName -ResourceGroupName $imageResourceGroup  -Location $location
 
 # create gallery definition
-New-AzGalleryImageDefinition -GalleryName $sigGalleryName -ResourceGroupName $imageResourceGroup -Location $location -Name $imageDefName -OsState generalized -OsType Windows -Publisher 'MicrosoftWindowsDesktop' -Offer 'office-365' -Sku '20h2-evd-o365pp'
+New-AzGalleryImageDefinition -GalleryName $sigGalleryName -ResourceGroupName $imageResourceGroup -Location $location -Name $imageDefName -OsState generalized -OsType Windows -Publisher 'MicrosoftWindowsDesktop' -Offer 'office-365' -Sku $osSKU
 
 ```
 
@@ -165,7 +166,7 @@ Invoke-WebRequest -Uri $templateUrl -OutFile $templateFilePath -UseBasicParsing
 # Submit the template
 Your template must be submitted to the service, this will download any dependent artifacts (scripts etc), validate, check permissions, and store them in the staging Resource Group, prefixed, *IT_*.
 ```powerShell
-New-AzResourceGroupDeployment -ResourceGroupName $imageResourceGroup -TemplateFile $templateFilePath -api-version "2019-05-01-preview" -imageTemplateName $imageTemplateName -svclocation $location
+New-AzResourceGroupDeployment -ResourceGroupName $imageResourceGroup -TemplateFile $templateFilePath -api-version "2019-05-01-preview" -imageTemplateName $imageTemplateName -osSKU $osSKU -svclocation $location
 ```
  
 # Build the image
