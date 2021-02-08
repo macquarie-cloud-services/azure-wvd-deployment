@@ -201,7 +201,7 @@
             },
             {
                 "name": "hostpoolVMCount",
-                "value": "variables('hostpoolVMCount')"
+                "value": "[concat('\"',variables('hostpoolVMCount'),'\"')]"
             },
             {
                 "name": "useAvailabilityZone",
