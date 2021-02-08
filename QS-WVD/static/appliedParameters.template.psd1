@@ -34,7 +34,7 @@
     loadBalancerType                      = "BreadthFirst"                      # Load-balancing algorithm
     vmNamePrefix                          = "[vmNamePrefix]"                    # Prefix for the WVD VMs that will be deployed
     vmSize                                = "[hostpoolVMSize]"                  # The VM SKU
-    vmNumberOfInstances                   = "[hostpoolVMCount]"                 # Number of VMs to be deployed
+    vmNumberOfInstances                   = [hostpoolVMCount]                   # Number of VMs to be deployed
     useAvailabilityZone                   = "[useAvailabilityZone]"             # True/False, spread hostpool VMs across Availability Zones. Region must support Availability Zones.
     vmInitialNumber                       = 1                                   # default
     diskSizeGB                            = 128                                 # Size of the VMs' disk
