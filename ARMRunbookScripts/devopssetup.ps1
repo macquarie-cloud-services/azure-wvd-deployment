@@ -337,7 +337,7 @@ if ($response.value.ObjectId -eq $null) {
 $url = $("https://dev.azure.com/" + $orgName + "/" + $projectName + "/_apis/git/repositories/" + $projectName + "/pushes?api-version=5.1")
 write-output $url
 
-$downloadUrl = $($fileUri + "/QS-WVD/variables.template.yml")
+$downloadUrl = $($fileURI + "/QS-WVD/variables.template.yml")
 $content = (New-Object System.Net.WebClient).DownloadString($downloadUrl)
 
 $content = $content.Replace("[location]", $location)
@@ -354,7 +354,7 @@ $content = $content.Replace("[identityApproach]", $identityApproach)
 $content = $content.Replace('"', '')
 write-output $content
 
-$downloadUrl = $($fileUri + "/QS-WVD/static/appliedParameters.template.psd1")
+$downloadUrl = $($fileURI + "/QS-WVD/static/appliedParameters.template.psd1")
 $parameters = (New-Object System.Net.WebClient).DownloadString($downloadUrl)
 
 # $parameters = $parameters.Replace("[principalIds]", $location)
@@ -375,7 +375,7 @@ $parameters = $parameters.Replace("[keyVaultName]", $keyvaultName)
 $parameters = $parameters.Replace("[vmNamePrefix]", $vmNamePrefix)
 $parameters = $parameters.Replace("[hostpoolname]", $hostpoolname)
 $parameters = $parameters.Replace("[hostpoolVMSize]", $hostpoolVMSize)
-$parameters = $parameters.Replace("[hostpoolVMCount]", [int]$hostpoolVMCount)
+$parameters = $parameters.Replace("[hostpoolVMCount]", $hostpoolVMCount)
 $parameters = $parameters.Replace("[useAvailabilityZone]", $useAvailabilityZone)
 $parameters = $parameters.Replace("[storageAccountSku]", $storageAccountSku)
 $parameters = $parameters.Replace("[sigGalleryName]", $sigGalleryName)
