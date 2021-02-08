@@ -89,7 +89,7 @@
             ]
         },
         "hostpoolVMCount": {
-            "type": "string",
+            "type": "int",
             "metadata": {
                 "description": "Number of VM in the WVD Host Pool to provision."
             }
@@ -201,7 +201,7 @@
             },
             {
                 "name": "hostpoolVMCount",
-                "value": "[concat('\"',variables('hostpoolVMCount'),'\"')]"
+                "value": "variables('hostpoolVMCount')"
             },
             {
                 "name": "useAvailabilityZone",
