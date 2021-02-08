@@ -95,7 +95,7 @@
             }
         },
         "useAvailabilityZone": {
-            "type": "bool",
+            "type": "string",
             "metadata": {
                 "description": "True/False. Spread hostpool VMs across AZs."
             }
