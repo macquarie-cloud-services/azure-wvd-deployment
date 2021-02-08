@@ -8,6 +8,9 @@
         "api-version": {
           "type": "string"
         },
+        "osSKU": {
+            "type": "string"
+        },
         "svclocation": {
             "type": "string"
         }
@@ -41,7 +44,7 @@
                     "type": "PlatformImage",
                     "publisher": "MicrosoftWindowsDesktop",
                     "offer": "office-365",
-                    "sku": "rs5-evd-o365pp",
+                    "sku": "[parameters('osSKU')]",
                     "version": "latest"
                 },
                 "customize": [
