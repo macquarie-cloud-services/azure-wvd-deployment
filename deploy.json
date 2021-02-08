@@ -89,7 +89,7 @@
             ]
         },
         "hostpoolVMCount": {
-            "type": "int",
+            "type": "string",
             "metadata": {
                 "description": "Number of VM in the WVD Host Pool to provision."
             }
