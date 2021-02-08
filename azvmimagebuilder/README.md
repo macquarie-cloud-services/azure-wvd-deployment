@@ -124,7 +124,7 @@ https://docs.microsoft.com/en-us/azure/role-based-access-control/troubleshooting
 ## Step 3 : Create the Shared Image Gallery
 
 ```powerShell
-$sigGalleryName = "mcs-aib-sig01"
+$sigGalleryName = "mcsaibgallery01"
 $imageDefName = "win10-20h2-o365-images"
 $osSKU = "20h2-evd-o365pp"
 
