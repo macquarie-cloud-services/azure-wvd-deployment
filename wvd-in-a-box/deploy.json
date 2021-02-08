@@ -58,7 +58,13 @@
             "metadata": {
                 "description": "Number of VM in the WVD Host Pool to provision."
             }
-        },   
+        },
+        "useAvailabilityZone": {
+            "type": "bool",
+            "metadata": {
+                "description": "True/False. Spread hostpool VMs across AZs."
+            }
+        },
         "storageAccountSku": {
             "type": "string",
             "metadata": {
@@ -111,6 +117,7 @@
         "hostpoolname": "[concat(parameters('customerName'),'-wvdpool01')]",
         "hostpoolVMSize": "[parameters('hostpoolVMSize')]",
         "hostpoolVMCount": "[parameters('hostpoolVMCount')]",
+        "useAvailabilityZone": "[parameters('useAvailabilityZone')]",
         "storageAccountSku": "[parameters('storageAccountSku')]",
         "sigGalleryName": "[concat(parameters('customerName'),'wvdsig01')]",
         "galleryImageDef": "[parameters('optionalGalleryImageDef')]",
@@ -164,6 +171,10 @@
             {
                 "name": "hostpoolVMCount",
                 "value": "[concat('\"',variables('hostpoolVMCount'),'\"')]"
+            },
+            {
+                "name": "useAvailabilityZone",
+                "value": "[concat('\"',variables('useAvailabilityZone'),'\"')]"
             },
             {
                 "name": "storageAccountSku",
