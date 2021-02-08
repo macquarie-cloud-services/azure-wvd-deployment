@@ -9,7 +9,7 @@
       "value": "StorageV2"
     },
     "storageAccountSku": {
-      "value": "[storageAccountSku]"
+      "value": "Standard_LRS"
     },
     "storageAccountAccessTier": {
       "value": "Hot"
