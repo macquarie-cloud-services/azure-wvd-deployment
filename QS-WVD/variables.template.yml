@@ -82,6 +82,9 @@ variables:
 - name: vmNumberOfInstances
   value: [hostpoolVMCount]
 
+- name: useAvailabilityZone
+  value: [useAvailabilityZone]
+
 - name: profilesStorageAccountName
   value: "[profilesStorageAccountName]"
 
