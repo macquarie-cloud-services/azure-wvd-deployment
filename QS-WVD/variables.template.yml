@@ -80,7 +80,7 @@ variables:
   value: "[hostpoolname]"
 
 - name: vmNumberOfInstances
-  value: "[hostpoolVMCount]"
+  value: [hostpoolVMCount]
 
 - name: profilesStorageAccountName
   value: "[profilesStorageAccountName]"
