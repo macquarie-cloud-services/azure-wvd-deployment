@@ -42,10 +42,7 @@
                 },
                 "secretName": "[AdminPasswordSecret]"
             }
-        },
-        "useAvailabilityZone": {
-            "value": "[useAvailabilityZone]"
-        },
+        }
         "availabilitySetName": {
             "value": ""
         },
