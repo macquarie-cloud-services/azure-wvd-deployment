@@ -97,8 +97,12 @@
         "useAvailabilityZone": {
             "type": "string",
             "metadata": {
-                "description": "True/False. Spread hostpool VMs across AZs."
-            }
+                "description": "1=True/ 0=False. Spread hostpool VMs across AZs."
+            },
+            "allowedValues": [
+                "0",
+                "1"
+            ]
         },
         "storageAccountSku": {
             "type": "string",
@@ -115,7 +119,11 @@
             "metadata": {
                 "description": "Shared Image Gallery Image Definition. eg. win10-o365-images"
             },
-            "defaultValue": ""
+            "allowedValues": [
+                " ",
+                "win10-20h2-o365-images",
+                "win10-20h2-images"
+            ]
         },
         "optionalGalleryImageVersion": {
             "type": "string",
