@@ -6,7 +6,7 @@
             "value": "[vmNamePrefix]"
         },
         "vmNumberOfInstances": {
-            "value": [hostpoolVMCount]
+            "value": "[hostpoolVMCount]"
         },
         "vmInitialNumber": {
             "value": 1
