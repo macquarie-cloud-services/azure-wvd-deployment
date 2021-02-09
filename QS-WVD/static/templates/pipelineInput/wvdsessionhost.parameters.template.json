@@ -46,6 +46,9 @@
         "availabilitySetName": {
             "value": ""
         },
+        "useAvailabilityZone": {
+            "value": "[useAvailabilityZone]"
+        },
         "subnetId": {
             "value": "subscriptions/[subscriptionId]/resourceGroups/[vnetResourceGroupName]/providers/Microsoft.Network/virtualNetworks/[vnetName]/subnets/[subnetName]"
         },
