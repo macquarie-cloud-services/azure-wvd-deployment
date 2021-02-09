@@ -348,6 +348,7 @@ stages:
                     }
 
                     $parameterObjects += @{ vmNumberOfInstances = $(vmNumberOfInstances) }
+                    $parameterObjects += @{ useAvailabilityZone = $(useAvailabilityZone) }
 
                     $storageAccount = Get-AzResource -Name $(profilesStorageAccountName) -ResourceType 'Microsoft.Storage/storageAccounts'
                     $SASKey = (Get-AzStorageAccountKey -AccountName $storageAccount.Name -ResourceGroupName $storageAccount.ResourceGroupName)[0]                    
