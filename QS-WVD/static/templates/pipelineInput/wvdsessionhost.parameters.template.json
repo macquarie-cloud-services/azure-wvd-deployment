@@ -42,7 +42,7 @@
                 },
                 "secretName": "[AdminPasswordSecret]"
             }
-        }
+        },
         "availabilitySetName": {
             "value": ""
         },
