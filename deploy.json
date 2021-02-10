@@ -133,7 +133,7 @@
             "allowedValues": [
                 " ",
                 "win10-20h2-o365-0.24608.50858",
-                "win10-20h2-versiontba"
+                "win10-20h2-0.24611.39286"
             ]
         },
         "optionalNotificationEmail": {
