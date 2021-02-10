@@ -123,7 +123,7 @@ LogInfo("###################")
 LogInfo("## 0 - LOAD DATA ##")
 LogInfo("###################")
 
-$ConfigurationFilePath= Join-Path $PSScriptRoot $ConfigurationFileName
+$ConfigurationFilePath = Join-Path $PSScriptRoot $ConfigurationFileName
 $ConfigurationJson = Get-Content -Path $ConfigurationFilePath -Raw -ErrorAction 'Stop'
 try { $wvdoptimizationtoolconfig = $ConfigurationJson | ConvertFrom-Json -ErrorAction 'Stop' }
 catch {
@@ -134,6 +134,17 @@ LogInfo("##################")
 LogInfo("## 1 - EVALUATE ##")
 LogInfo("##################")
 
+# Get SIG img id in form '/subscriptions/<subscriptionId>/resourceGroups/<image-resource-group-name>/providers/Microsoft.Compute/galleries/<SIG name>/images/<image name>/versions/<version>'
+$imgRefId = $wvdoptimizationtoolconfig.wvdoptimizationtoolconfig.customImageRefId
+# Get the image definition name from the image Id
+$imgDefName = $imgRefId.split("/")[10]
+# Get the Windows Build Version from the Definition Name
+$win10Build = $imgDefName.split("-")[1]
+
+# Build 20h2 is known as 2009
+If ($win10Build -eq "20h2") {
+    $win10Build = "2009"
+}
 
 LogInfo("####################################")
 LogInfo("# 2. Extract WVD Optimization Tool #")
@@ -154,5 +165,5 @@ $scriptBlock = { .\psexec /accepteula -h -u $username -p $domainJoinPassword -c 
 Invoke-Command $scriptBlock -Verbose
 
 LogInfo("Execution policy for the admin user set. Run WVD optimization tool")
-& "$PSScriptRoot\azure-wvd-optimization-tool-master\azure-wvd-optimization-tool-master\Win10_VirtualDesktop_Optimize.ps1 -WindowsVersion 2009 -Verbose"
+& "$PSScriptRoot\azure-wvd-optimization-tool-master\azure-wvd-optimization-tool-master\Win10_VirtualDesktop_Optimize.ps1 -WindowsVersion $win10Build -Verbose"
 LogInfo("WVD Optimizations Completed")
