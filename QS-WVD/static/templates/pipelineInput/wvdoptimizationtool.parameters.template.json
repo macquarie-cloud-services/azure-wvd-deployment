@@ -1,7 +1,9 @@
 {
     "wvdoptimizationtoolconfig": [
         {
-            "customImageRefId": "[customImageReferenceId]"
+            "customImageRefId": "[customImageReferenceId]",
+            "domainName": "[domainName]",
+            "domainJoinUsername": "[adminUsername]"
         }
     ]
 }
