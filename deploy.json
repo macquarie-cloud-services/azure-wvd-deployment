@@ -130,7 +130,11 @@
             "metadata": {
                 "description": "Shared Image Gallery Image version. eg. 1.0.0"
             },
-            "defaultValue": ""
+            "allowedValues": [
+                " ",
+                "win10-20h2-o365-0.24608.50858",
+                "win10-20h2-versiontba"
+            ]
         },
         "optionalNotificationEmail": {
             "type": "string",
