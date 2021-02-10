@@ -10,8 +10,7 @@
         },
         "appGroupResourceIds": {
             "value": [
-                "/subscriptions/[subscriptionId]/resourceGroups/[resourceGroupName]/providers/Microsoft.DesktopVirtualization/applicationgroups/[DesktopAppGroupName]",
-                "/subscriptions/[subscriptionId]/resourceGroups/[resourceGroupName]/providers/Microsoft.DesktopVirtualization/applicationgroups/[appGroupName]"
+                "/subscriptions/[subscriptionId]/resourceGroups/[resourceGroupName]/providers/Microsoft.DesktopVirtualization/applicationgroups/[DesktopAppGroupName]"
             ]
         },
         "workspaceFriendlyName": {
@@ -20,19 +19,7 @@
         "workspaceDescription": {
             "value": ""
         },
-        "diagnosticLogsRetentionInDays": {
-            "value": 365
-        },
-        "diagnosticStorageAccountId": {
-            "value": ""
-        },
         "workspaceId": {
-            "value": ""
-        },
-        "eventHubAuthorizationRuleId": {
-            "value": ""
-        },
-        "eventHubName": {
             "value": ""
         },
         "lockForDeletion": {
