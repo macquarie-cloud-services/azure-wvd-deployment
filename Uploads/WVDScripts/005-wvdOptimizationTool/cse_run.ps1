@@ -117,7 +117,7 @@ function Set-Logger {
 
 ## MAIN
 #Set-Logger "C:\WindowsAzure\CustomScriptExtension\Log" # inside "executionCustomScriptExtension_$date.log"
-Set-Logger "C:\WindowsAzure\Logs\Plugins\Microsoft.Compute.CustomScriptExtension\executionLog\wvdoptimizationtool" # inside "executionCustomScriptExtension_$scriptName_$date.log"
+Set-Logger "C:\WindowsAzure\Logs\Plugins\Microsoft.Compute.CustomScriptExtension\executionLog\wvdOptimizationTool" # inside "executionCustomScriptExtension_$scriptName_$date.log"
 
 LogInfo("###################")
 LogInfo("## 0 - LOAD DATA ##")
