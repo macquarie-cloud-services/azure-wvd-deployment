@@ -1,0 +1,112 @@
+{
+    "$schema": "http://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+      "imageTemplateName": {
+        "type": "string"
+        },
+        "api-version": {
+          "type": "string"
+        },
+        "osPublisher": {
+            "type": "string"
+        },
+        "osOffer": {
+            "type": "string"
+        },
+        "osSKU": {
+            "type": "string"
+        },
+        "svclocation": {
+            "type": "string"
+        }
+    },
+    "variables": {},
+    "resources": [
+        {
+            "name": "[parameters('imageTemplateName')]",
+            "type": "Microsoft.VirtualMachineImages/imageTemplates",
+            "apiVersion": "[parameters('api-version')]",
+            "location": "[parameters('svclocation')]",
+            "dependsOn": [],
+            "tags": {
+                    "imagebuilderTemplate": "AzureImageBuilderSIG",
+                    "userIdentity": "enabled"
+                },
+                "identity": {
+                    "type": "UserAssigned",
+                            "userAssignedIdentities": {
+                                "<imgBuilderId>": {}
+                            }
+                },
+            "properties": {
+                "buildTimeoutInMinutes" : 200,
+                "vmProfile": 
+                {
+                    "vmSize": "Standard_B2s",
+                    "osDiskSizeGB": 0
+                },
+                "source": {
+                    "type": "PlatformImage",
+                    "publisher": "[parameters('osPublisher')]",
+                    "offer": "[parameters('osOffer')]",
+                    "sku": "[parameters('osSKU')]",
+                    "version": "latest"
+                },
+                "customize": [
+                    {
+                        "type": "PowerShell",
+                        "name": "CreateBuildPath",
+                        "runElevated": false,
+                        "scriptUri": "https://raw.githubusercontent.com/macquarie-cloud-services/azure-wvd-deployment/master/azvmimagebuilder/testPsScript.ps1"
+                    },
+                    {
+                        "type": "WindowsRestart",
+                        "restartCheckCommand": "echo Azure-Image-Builder-Restarted-the-VM  > c:\\buildArtifacts\\azureImageBuilderRestart.txt",
+                        "restartTimeout": "5m"
+                    },
+                    {
+                        "type": "File",
+                        "name": "downloadBuildArtifacts",
+                        "sourceUri": "https://raw.githubusercontent.com/macquarie-cloud-services/azure-wvd-deployment/master/azvmimagebuilder/buildArtifacts/index.html",
+                        "destination":"c:\\buildArtifacts\\index.html"
+                    },
+                    {
+                        "type": "PowerShell",
+                        "name": "settingUpMgmtAgtPath",
+                        "runElevated": false,
+                        "inline": [
+                            "mkdir c:\\buildActions",
+                            "echo Azure-Image-Builder-Was-Here  > c:\\buildActions\\buildActionsOutput.txt"
+                        ]
+                    },
+                    {
+                        "type": "WindowsUpdate",
+                        "searchCriteria": "IsInstalled=0",
+                        "filters": [
+                            "exclude:$_.Title -like '*Preview*'",
+                            "include:$true"
+                        ],
+                        "updateLimit": 20
+                    }
+                ],
+                "distribute": 
+                [
+                    {
+                        "type": "SharedImage",
+                        "galleryImageId": "/subscriptions/<subscriptionID>/resourceGroups/<rgName>/providers/Microsoft.Compute/galleries/<sharedImageGalName>/images/<imageDefName>",
+                        "runOutputName": "<runOutputName>",
+                        "artifactTags": {
+                            "source": "azVmImageBuilder",
+                            "baseosimg": "[parameters('osOffer')]",
+                        },
+                        "replicationRegions": [
+                          "eastus",
+                          "australiaeast"
+                        ]
+                    }
+                ]
+            }
+        }
+    ]
+}
