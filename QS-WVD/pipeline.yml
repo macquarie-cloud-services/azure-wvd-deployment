@@ -59,7 +59,7 @@ stages:
                 name: Copy_wvdOptimizationTool_parameters
                 inputs:
                   SourceFolder: '$(Build.Repository.LocalPath)/QS-WVD/Parameters'
-                  Contents: 'wvdOptimizationTool.parameters.json'
+                  Contents: 'wvdoptimizationtool.parameters.json'
                   TargetFolder: '$(Pipeline.Workspace)/s/Uploads/WVDScripts/005-wvdOptimizationTool'
                   OverWrite: true
               - task: CopyFiles@2
