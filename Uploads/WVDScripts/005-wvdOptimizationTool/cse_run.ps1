@@ -167,6 +167,11 @@ LogInfo("Using PSExec, set execution policy for the admin user")
 $scriptBlock = { .\psexec /accepteula -h -u $username -p $domainJoinPassword -c -f "powershell.exe" Set-ExecutionPolicy -ExecutionPolicy Unrestricted -Scope CurrentUser -Force }
 Invoke-Command $scriptBlock -Verbose
 
-LogInfo("Execution policy for the admin user set. Run WVD optimization tool")
+LogInfo("Execution policy for the admin user set. Setting path to $PSScriptRoot\azure-wvd-optimization-tool-master")
+$scriptBlock = { .\psexec /accepteula -h -u $username -p $domainJoinPassword -c -f "powershell.exe" Set-Location $PSScriptRoot\azure-wvd-optimization-tool-master }
+Invoke-Command $scriptBlock -Verbose
+
+LogInfo("Path set. Running WVD Optimization Tool.")
 & "$PSScriptRoot\azure-wvd-optimization-tool-master\Win10_VirtualDesktop_Optimize.ps1 -WindowsVersion $win10Build -Verbose"
+
 LogInfo("WVD Optimizations Completed")
