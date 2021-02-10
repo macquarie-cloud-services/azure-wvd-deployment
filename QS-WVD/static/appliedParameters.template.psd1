@@ -35,7 +35,6 @@
     vmNamePrefix                          = "[vmNamePrefix]"                    # Prefix for the WVD VMs that will be deployed
     vmSize                                = "[hostpoolVMSize]"                  # The VM SKU
     vmNumberOfInstances                   = [hostpoolVMCount]                   # Number of VMs to be deployed
-    #useAvailabilityZone                   = "[useAvailabilityZone]"             # true/false. Spread hostpool VMs across Azure Availability Zones.
     vmInitialNumber                       = 1                                   # default
     diskSizeGB                            = 128                                 # Size of the VMs' disk
     vmDiskType                            = "Premium_LRS"                       # SKU of the above disk
