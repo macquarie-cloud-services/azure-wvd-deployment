@@ -64,8 +64,8 @@
     imagingResourceGroupName              = "QS-WVD-IMG-RG"                     # [Not used, can be used for custom imaging]
     imageTemplateName                     = "QS-WVD-ImageTemplate"              # [Not used, can be used for custom imaging]
     imagingMSItt                          = "[imagingMSItt]"                    # [Not used, can be used for custom imaging]
-    sigGalleryName                        = "[sigGalleryName]"                  # [Not used, can be used for custom imaging]
-    sigImageDefinitionId                  = "<sigImageDefinitionId>"            # [Not used, can be used for custom imaging]
+    sigGalleryName                        = "[sigGalleryName]"                  # SIG name
+    customImageReferenceId                = "[customImageReferenceId]"          # SIG image resource ID
     imageDefinitionName                   = "W10-20H1-O365"                     # [Not used, can be used for custom imaging]
     osType                                = "Windows"                           # default
     publisher                             = "microsoftwindowsdesktop"           # default
