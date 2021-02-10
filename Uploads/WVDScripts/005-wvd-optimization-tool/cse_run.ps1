@@ -18,7 +18,7 @@ param (
     
     [Parameter(Mandatory = $false)]
     [ValidateNotNullOrEmpty()]
-    [string] $ConfigurationFileName = "azfiles.parameters.json"
+    [string] $ConfigurationFileName = "wvdoptimizationtool.parameters.json"
 )
 
 #####################################
@@ -119,8 +119,24 @@ function Set-Logger {
 #Set-Logger "C:\WindowsAzure\CustomScriptExtension\Log" # inside "executionCustomScriptExtension_$date.log"
 Set-Logger "C:\WindowsAzure\Logs\Plugins\Microsoft.Compute.CustomScriptExtension\executionLog\wvdoptimizationtool" # inside "executionCustomScriptExtension_$scriptName_$date.log"
 
+LogInfo("###################")
+LogInfo("## 0 - LOAD DATA ##")
+LogInfo("###################")
+
+$ConfigurationFilePath= Join-Path $PSScriptRoot $ConfigurationFileName
+$ConfigurationJson = Get-Content -Path $ConfigurationFilePath -Raw -ErrorAction 'Stop'
+try { $wvdoptimizationtoolconfig = $ConfigurationJson | ConvertFrom-Json -ErrorAction 'Stop' }
+catch {
+    Write-Error "Configuration JSON content could not be converted to a PowerShell object" -ErrorAction 'Stop'
+}
+
+LogInfo("##################")
+LogInfo("## 1 - EVALUATE ##")
+LogInfo("##################")
+
+
 LogInfo("####################################")
-LogInfo("# 1. Extract WVD Optimization Tool #")
+LogInfo("# 2. Extract WVD Optimization Tool #")
 LogInfo("####################################")
 
 $WVDOptimizationToolArchivePath = Join-Path $PSScriptRoot "azure-wvd-optimization-tool-master.zip"
@@ -130,7 +146,7 @@ Expand-Archive -Path $WVDOptimizationToolArchivePath -DestinationPath $PSScriptR
 LogInfo("Archive expanded")
 
 LogInfo("###############################")
-LogInfo("## 2 - Run WVD Optimizations ##")
+LogInfo("## 3 - Run WVD Optimizations ##")
 LogInfo("###############################")
 
 LogInfo("Using PSExec, set execution policy for the admin user")
