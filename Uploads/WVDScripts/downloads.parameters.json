@@ -11,6 +11,10 @@
         {
             "Url": "https://teams.microsoft.com/downloads/desktopurl?env=production&plat=windows&arch=x64&managedInstaller=true&download=true",
             "DestinationFilePath": "004-Teams/Teams_windows_x64.msi"
+        },
+        {
+            "Url": "https://github.com/macquarie-cloud-services/azure-wvd-optimization-tool/archive/master.zip,
+            "DestinationFilePath": "005-wvd-optimization-tool/azure-wvd-optimization-tool-master.zip"
         }
     ]
 }
