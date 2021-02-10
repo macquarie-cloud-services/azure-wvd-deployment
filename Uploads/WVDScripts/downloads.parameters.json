@@ -13,7 +13,7 @@
             "DestinationFilePath": "004-Teams/Teams_windows_x64.msi"
         },
         {
-            "Url": "https://github.com/macquarie-cloud-services/azure-wvd-optimization-tool/archive/master.zip,
+            "Url": "https://github.com/macquarie-cloud-services/azure-wvd-optimization-tool/archive/master.zip",
             "DestinationFilePath": "005-wvd-optimization-tool/azure-wvd-optimization-tool-master.zip"
         }
     ]
