@@ -168,5 +168,5 @@ $scriptBlock = { .\psexec /accepteula -h -u $username -p $domainJoinPassword -c 
 Invoke-Command $scriptBlock -Verbose
 
 LogInfo("Execution policy for the admin user set. Run WVD optimization tool")
-& "$PSScriptRoot\azure-wvd-optimization-tool-master\azure-wvd-optimization-tool-master\Win10_VirtualDesktop_Optimize.ps1 -WindowsVersion $win10Build -Verbose"
+& "$PSScriptRoot\azure-wvd-optimization-tool-master\Win10_VirtualDesktop_Optimize.ps1 -WindowsVersion $win10Build -Verbose"
 LogInfo("WVD Optimizations Completed")
