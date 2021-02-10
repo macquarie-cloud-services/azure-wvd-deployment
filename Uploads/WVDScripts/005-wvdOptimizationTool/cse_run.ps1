@@ -18,7 +18,7 @@ param (
     
     [Parameter(Mandatory = $false)]
     [ValidateNotNullOrEmpty()]
-    [string] $ConfigurationFileName = "wvdOptimizationTool.parameters.json"
+    [string] $ConfigurationFileName = "wvdoptimizationtool.parameters.json"
 )
 
 #####################################
