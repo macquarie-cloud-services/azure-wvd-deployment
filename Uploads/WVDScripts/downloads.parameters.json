@@ -14,7 +14,7 @@
         },
         {
             "Url": "https://github.com/macquarie-cloud-services/azure-wvd-optimization-tool/archive/master.zip",
-            "DestinationFilePath": "005-wvd-optimization-tool/azure-wvd-optimization-tool-master.zip"
+            "DestinationFilePath": "005-wvdOptimizationTool/azure-wvd-optimization-tool-master.zip"
         }
     ]
 }
