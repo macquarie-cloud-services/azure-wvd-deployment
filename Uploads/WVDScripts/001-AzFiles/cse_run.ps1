@@ -130,7 +130,7 @@ LogInfo("## 0 - LOAD DATA ##")
 LogInfo("###################")
 #$storageaccountkey = $DynParameters.storageaccountkey
 
-$ConfigurationFilePath= Join-Path $PSScriptRoot $ConfigurationFileName
+$ConfigurationFilePath = Join-Path $PSScriptRoot $ConfigurationFileName
 
 $ConfigurationJson = Get-Content -Path $ConfigurationFilePath -Raw -ErrorAction 'Stop'
 
@@ -154,11 +154,17 @@ foreach ($config in $azfilesconfig.azfilesconfig) {
             Set-ExecutionPolicy -ExecutionPolicy Unrestricted -Scope CurrentUser -Force
 
             #Define parameters
+            $SubscriptionId = $config.SubscriptionId
+            $SubscriptionId = $SubscriptionId.Replace('"', "'")
             $ResourceGroupName = $config.ResourceGroupName
             $ResourceGroupName = $ResourceGroupName.Replace('"', "'")
             $StorageAccountName = $config.StorageAccountName
             $StorageAccountName = $StorageAccountName.Replace('"', "'")
-
+            
+            If ($StorageAccountName.Length -gt 15) {
+                LogInfo("ERROR - Storage Account Name $StorageAccountName must not exceed 15 chars to join the AD domain.")
+                Exit
+            }
             # Register the target storage account with your active directory environment under the target OU (for example: specify the OU with Name as "UserAccounts" or DistinguishedName as "OU=UserAccounts,DC=CONTOSO,DC=COM"). 
             # You can use to this PowerShell cmdlet: Get-ADOrganizationalUnit to find the Name and DistinguishedName of your target OU. If you are using the OU Name, specify it with -OrganizationalUnitName as shown below. If you are using the OU DistinguishedName, you can set it with -OrganizationalUnitDistinguishedName. You can choose to provide one of the two names to specify the target OU.
             # You can choose to create the identity that represents the storage account as either a Service Logon Account or Computer Account (default parameter value), depends on the AD permission you have and preference. 
@@ -174,7 +180,7 @@ foreach ($config in $azfilesconfig.azfilesconfig) {
             Invoke-Command $scriptBlock -Verbose
 
             LogInfo("Execution policy for the admin user set. Now joining the storage account through another PSExec command... This command takes roughly 5 minutes")
-            $scriptBlock = { .\psexec /accepteula -h -u $username -p $domainJoinPassword -c -f "powershell.exe" "$scriptPath -S $StorageAccountName -RG $ResourceGroupName -U $AzureAdminUpn -P $AzureAdminPassword" }
+            $scriptBlock = { .\psexec /accepteula -h -u $username -p $domainJoinPassword -c -f "powershell.exe" "$scriptPath -I $SubscriptionId -S $StorageAccountName -RG $ResourceGroupName -U $AzureAdminUpn -P $AzureAdminPassword" }
             LogInfo("Scriptblock to execute: $scriptBlock")
             Invoke-Command $scriptBlock -Verbose
 
