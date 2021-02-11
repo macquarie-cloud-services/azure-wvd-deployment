@@ -174,7 +174,9 @@ LogInfo("Execution policy for the admin user set. Setting path to $PSScriptRoot\
 $scriptBlock = { .\psexec /accepteula -h -u $username -p $domainJoinPassword -c -f "powershell.exe" Set-Location $PSScriptRoot\azure-wvd-optimization-tool-master }
 Invoke-Command $scriptBlock -Verbose
 
-LogInfo("Path set. Running WVD Optimization Tool.")
-& ".\Win10_VirtualDesktop_Optimize.ps1 -WindowsVersion $win10Build -Verbose"
+LogInfo("Path set. Running WVD Optimization Tool for Windows 10 build $win10Build.")
+$scriptBlock = { .\psexec /accepteula -h -u $username -p $domainJoinPassword -c -f "powershell.exe" .\Win10_VirtualDesktop_Optimize.ps1 -WindowsVersion $win10Build -Verbose }
+Invoke-Command $scriptBlock -Verbose
 
 LogInfo("WVD Optimizations Completed")
+
