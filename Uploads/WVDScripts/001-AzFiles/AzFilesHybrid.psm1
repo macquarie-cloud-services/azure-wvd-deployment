@@ -23,6 +23,8 @@ param(
 #   DNS to access Azure resources on-premises and vice versa.
 # - DFS-N cmdlets, which wrap Azure and Windows Server DFS-N to make it a more seamless process
 #   to adopt Azure Files to replace on-premises file servers.
+#   Share level permissions migration cmdlets, used to migrate share level permissions set on
+#   local (on-rem) server  to share on Azure storage.
 
 
 #region General cmdlets
@@ -1438,7 +1440,7 @@ function Register-OfflineMachine {
 
         if (![string]::IsNullOrEmpty($MachineName)) {
             $computer = Get-ADComputerInternal `
-                    -Filter "Name -eq `"$MachineName`"" `
+                    -Filter "Name -eq '$MachineName'" `
                     -Server $Domain
 
             if ($null -ne $computer) {
@@ -2050,38 +2052,38 @@ function Validate-StorageAccount {
          [Parameter(Mandatory=$true, Position=0)]
          [string]$ResourceGroupName,
          [Parameter(Mandatory=$true, Position=1)]
-         [string]$Name
+         [string]$StorageAccountName
     )
 
     process
     {
-        # Verify the resource group exists.
-        try
-        {
-            $ResourceGroupObject = Get-AzResourceGroup -Name $ResourceGroupName -ErrorAction Stop
-        }
-        catch 
-        {
-            throw
-        }
+        $resourceGroupObject = Get-AzResourceGroup -Name $ResourceGroupName
 
-        if ($null -eq $ResourceGroupObject)
+        if ($null -eq $resourceGroupObject)
         {
-            throw "Resource group not found: '$ResourceGroup'"
+            $message = "Resource group not found: '$ResourceGroupName'." `
+                + " Please check whether the provided name '$ResourceGroupName' is valid or" `
+                + " whether the resource group exists by running" `
+                + " 'Get-AzResourceGroup -Name <ResourceGroupName>'" `
+                + " (https://docs.microsoft.com/en-us/azure/azure-resource-manager/management/manage-resource-groups-powershell)"
+            Write-Error -Message $message -ErrorAction Stop
         }
 
-        # Verify the storage account exists.
-        Write-Verbose "Getting storage account $Name in ResourceGroup $ResourceGroupName"
-        $StorageAccountObject = Get-AzStorageAccount -ResourceGroup $ResourceGroupName -Name $Name
+        $storageAccountObject = Get-AzStorageAccount -ResourceGroup $ResourceGroupName -Name $StorageAccountName
 
-        if ($null -eq $StorageAccountObject)
+        if ($null -eq $storageAccountObject)
         {
-            throw "Storage account not found: '$StorageAccountName'"
+            $message = "Storage account not found: '$StorageAccountName'." `
+                + " Please check whether the provided name '$StorageAccountName' is valid or" `
+                + " whether the storage account exists by running" `
+                + " 'Get-AzStorageAccount -ResourceGroup <ResourceGroupName> -Name <StorageAccountName>'" `
+                + " (https://docs.microsoft.com/en-us/powershell/module/az.storage/get-azstorageaccount?view=azps-4.4.0)"
+            Write-Error -Message $message -ErrorAction Stop
         }
 
-        Write-Verbose "Storage Account: $Name exists in Resource Group: $ResourceGroupName"
+        Write-Verbose "Found storage Account '$StorageAccountName' in Resource Group '$ResourceGroupName'"
 
-        return $StorageAccountObject
+        return $storageAccountObject
     }
 }
 
@@ -2122,9 +2124,7 @@ function Ensure-KerbKeyExists {
         }
 
         try {
-            $keys = Get-AzStorageAccountKey -ResourceGroupName $ResourceGroupName -Name $StorageAccountName `
-                 -ListKerbKey
-
+            $keys = Get-AzStorageAccountKerbKeys -ResourceGroupName $ResourceGroupName -StorageAccountName $StorageAccountName
             $kerb1Key = $keys | Where-Object { $_.KeyName -eq "kerb1" }
             $kerb2Key = $keys | Where-Object { $_.KeyName -eq "kerb2" }
         }
@@ -2144,8 +2144,8 @@ function Ensure-KerbKeyExists {
                 Write-Error -Message "Caught exception: $_" -ErrorAction Stop
             }
 
-            $kerb1Key = Get-AzStorageAccountKey -ResourceGroupName $ResourceGroupName -Name $StorageAccountName `
-                 -ListKerbKey | Where-Object { $_.KeyName -eq "kerb1" }
+            $kerb1Key = Get-AzStorageAccountKerbKeys -ResourceGroupName $ResourceGroupName -StorageAccountName $StorageAccountName `
+                        | Where-Object { $_.KeyName -eq "kerb1" }
         
             Write-Verbose "    Key: $($kerb1Key.KeyName) generated for StorageAccount: $StorageAccountName"
         } else {
@@ -2159,14 +2159,141 @@ function Ensure-KerbKeyExists {
 
             $keys = New-AzStorageAccountKey -ResourceGroupName $ResourceGroupName -Name $StorageAccountName -KeyName kerb2 -ErrorAction Stop
 
-            $kerb2Key = Get-AzStorageAccountKey -ResourceGroupName $ResourceGroupName -Name $StorageAccountName `
-                 -ListKerbKey | Where-Object { $_.KeyName -eq "kerb2" }
+            $kerb2Key = Get-AzStorageAccountKerbKeys -ResourceGroupName $ResourceGroupName -StorageAccountName $StorageAccountName `
+                        | Where-Object { $_.KeyName -eq "kerb2" }
         
             Write-Verbose "    Key: $($kerb2Key.KeyName) generated for StorageAccount: $StorageAccountName"
         } else {
             Write-Verbose "    Key: $($kerb2Key.KeyName) exists in Storage Account: $StorageAccountName"
         }
     }
+}
+
+function Get-AzStorageAccountFileEndpoint {
+    <#
+    .SYNOPSIS
+        Gets the file service endpoint for the storage account.
+    
+    .DESCRIPTION
+        Gets the file service endpoint for the storage account.
+        Notably, this command queries the storage account's file endpoint URL
+        (i.e. "https://<storageAccount>.file.core.windows.net/") and returns it.
+    .EXAMPLE
+        PS C:\> Get-AzStorageAccountFileEndpoint -storageAccountName "storageAccount" -resourceGroupName "resourceGroup"
+        https://<storageAccount>.file.core.windows.net/
+    #>
+
+    [CmdletBinding()]
+    param (
+        [Parameter(Mandatory=$True, Position=0, HelpMessage="Storage account name")]
+        [string]$StorageAccountName,
+
+        [Parameter(Mandatory=$True, Position=1, HelpMessage="Resource group name")]
+        [string]$ResourceGroupName
+    )
+
+    $storageAccountObject = Validate-StorageAccount -ResourceGroupName $ResourceGroupName `
+        -StorageAccountName $StorageAccountName -ErrorAction Stop
+
+    if ([string]::IsNullOrEmpty($storageAccountObject.PrimaryEndpoints.File)) {
+        $message = "Cannot find the file service endpoint for storage account" `
+            + " '$StorageAccountName' in resource group '$ResourceGroupName'. This may happen" `
+            + " if the storage account type does not support file service" `
+            + " (https://docs.microsoft.com/en-us/azure/storage/common/storage-account-overview#types-of-storage-accounts)."
+        Write-Error -Message $message -ErrorAction Stop
+    }
+
+    return $storageAccountObject.PrimaryEndpoints.File
+}
+
+function Get-AzStorageAccountActiveDirectoryProperties {
+    <#
+    .SYNOPSIS
+        Gets the active directory properties for the storage account.
+    
+    .DESCRIPTION
+        Gets the active directory properties for the storage account.
+        Notably, this command queries the storage account's AzureFilesIdentityBasedAuth.ActiveDirectoryProperties and returns it.
+    .EXAMPLE
+        PS C:\> Get-AzStorageAccountActiveDirectoryProperties -StorageAccountName "storageAccount" -ResourceGroupName "resourceGroup"
+    #>
+
+    [CmdletBinding()]
+    param (
+        [Parameter(Mandatory=$true, Position=0, ParameterSetName="StorageAccountName")]
+        [string]$ResourceGroupName,
+
+        [Parameter(Mandatory=$true, Position=1, ParameterSetName="StorageAccountName")]
+        [string]$StorageAccountName,
+
+        [Parameter(
+            Mandatory=$true, 
+            Position=0, 
+            ParameterSetName="StorageAccount", 
+            ValueFromPipeline=$true)]
+        [Microsoft.Azure.Commands.Management.Storage.Models.PSStorageAccount]$StorageAccount
+    )
+
+    switch ($PSCmdlet.ParameterSetName) {
+        "StorageAccountName" {
+            $StorageAccount = Validate-StorageAccount -ResourceGroupName $ResourceGroupName `
+                -StorageAccountName $StorageAccountName -ErrorAction Stop
+        }
+
+        "StorageAccount" {                
+            $ResourceGroupName = $StorageAccount.ResourceGroupName
+            $StorageAccountName = $StorageAccount.StorageAccountName
+        }
+
+        default {
+            throw [ArgumentException]::new("Unrecognized parameter set $_")
+        }
+    }
+
+    if ($null -eq $StorageAccount.AzureFilesIdentityBasedAuth.ActiveDirectoryProperties) {
+        $message = "ActiveDirectoryProperties is not set for storage account '$StorageAccountName'" `
+            + " in resource group '$ResourceGroupName'. To set the properties, please use cmdlet" `
+            + " Set-AzStorageAccount if the account is already associated with an Active Directory," `
+            + " or use cmdlet Join-AzStorageAccountForAuth to join the account to an Active Directory" `
+            + " (https://docs.microsoft.com/en-us/azure/storage/files/storage-files-identity-ad-ds-enable)"
+        Write-Error -Message $message -ErrorAction Stop
+    }
+
+    return $StorageAccount.AzureFilesIdentityBasedAuth.ActiveDirectoryProperties
+}
+
+function Get-AzStorageAccountKerbKeys {
+    <#
+    .SYNOPSIS
+        Gets the kerb keys for the storage account.
+    
+    .DESCRIPTION
+        Gets the kerb keys for the storage account.
+    .EXAMPLE
+        PS C:\> Get-AzStorageAccountKerbKeys -StorageAccountName "storageAccount" -ResourceGroupName "resourceGroup"
+    #>
+
+    [CmdletBinding()]
+    param (
+        [Parameter(Mandatory=$true, Position=0)]
+        [string]$ResourceGroupName,
+        [Parameter(Mandatory=$true, Position=1)]
+        [string]$StorageAccountName
+    )
+
+    Validate-StorageAccount -ResourceGroupName $ResourceGroupName -StorageAccountName $StorageAccountName -ErrorAction Stop
+    
+    $keys = Get-AzStorageAccountKey -ResourceGroupName $ResourceGroupName -Name $StorageAccountName -ListKerbKey `
+            | Where-Object { $_.KeyName -like "kerb*" }
+
+    if (($null -eq $keys) -or (($keys -is [System.Array]) -and ($keys.Length -eq 0))) {
+        $message = "Cannot find kerb keys for storage account '$StorageAccountName' in" `
+            + " resource group '$ResourceGroupName'. Please ensure kerb keys are configured" `
+            + " (https://docs.microsoft.com/en-us/azure/storage/files/storage-files-identity-ad-ds-enable#creating-an-identity-representing-the-storage-account-in-your-ad-manually)"
+        Write-Error -Message $message -ErrorAction Stop
+    }
+
+    return $keys
 }
 
 function Get-ServicePrincipalName {
@@ -2181,25 +2308,33 @@ function Get-ServicePrincipalName {
             - Transforms that URL string into a SMB server service principal name 
                 (i.e. "cifs\<storageaccount>.file.core.windows.net")
     .EXAMPLE
-        PS C:\> Get-ServicePrincipalName -storageAccountName "storageAccount" -resourceGroupName "resourceGroup"
+        PS C:\> Get-ServicePrincipalName -StorageAccountName "storageAccount" -ResourceGroupName "resourceGroup"
         cifs\storageAccount.file.core.windows.net
     #>
 
     [CmdletBinding()]
     param (
         [Parameter(Mandatory=$True, Position=0, HelpMessage="Storage account name")]
-        [string]$storageAccountName,
+        [string]$StorageAccountName,
 
         [Parameter(Mandatory=$True, Position=1, HelpMessage="Resource group name")]
-        [string]$resourceGroupName
+        [string]$ResourceGroupName
     )
 
-    $storageAccountObject = Get-AzStorageAccount -ResourceGroup $resourceGroupName -Name $storageAccountName
-    $servicePrincipalName = $storageAccountObject.PrimaryEndpoints.File -replace 'https://','cifs/'
-    $servicePrincipalName = $servicePrincipalName.Substring(0, $servicePrincipalName.Length - 1);
+    $fileEndpoint = Get-AzStorageAccountFileEndpoint -ResourceGroupName $ResourceGroupName `
+        -StorageAccountName $StorageAccountName -ErrorAction Stop
 
-    Write-Verbose "Generating service principal name of $servicePrincipalName"
-    return $servicePrincipalName;
+    $servicePrincipalName = $fileEndpoint -replace 'https://','cifs/'
+    $servicePrincipalName = $servicePrincipalName.TrimEnd('/')
+
+    if ([string]::IsNullOrEmpty($servicePrincipalName)) {
+        $message = "Unable to generate the service principal name from the" `
+            + " storage account's file endpoint '$fileEndpoint'"
+        Write-Error -Message $message -ErrorAction Stop
+    }
+
+    Write-Verbose "Generated service principal name of $servicePrincipalName"
+    return $servicePrincipalName
 }
 
 function New-ADAccountForStorageAccount {
@@ -2295,16 +2430,16 @@ function New-ADAccountForStorageAccount {
     }
 
     if (-not [System.String]::IsNullOrEmpty($OrganizationalUnitDistinguishedName)) {
-        $ou = Get-ADOrganizationalUnit -Identity $OrganizationalUnitDistinguishedName -Server $Domain
+        $ou = Get-ADObject -Identity $OrganizationalUnitDistinguishedName -Server $Domain
 
         if ($null -eq $ou) {
-            Write-Error -Message "Could not find an organizational unit with name '$OrganizationalUnitDistinguishedName' in the $Domain domain" -ErrorAction Stop
+            Write-Error -Message "Could not find an object with name '$OrganizationalUnitDistinguishedName' in the $Domain domain" -ErrorAction Stop
         }
     } elseif (-not [System.String]::IsNullOrEmpty($OrganizationalUnit)) {
-        $ou = Get-ADOrganizationalUnit -Filter { Name -eq $OrganizationalUnit } -Server $Domain
+        $ou = Get-ADObject -Filter "Name -eq '$OrganizationalUnit'" -Server $Domain
 
         if ($null -eq $ou) {
-            Write-Error -Message "Could not find an organizational unit with name '$OrganizationalUnit' in the $Domain domain" -ErrorAction Stop
+            Write-Error -Message "Could not find an object with name '$OrganizationalUnit' in the $Domain domain" -ErrorAction Stop
         }
 
         if ($ou -is ([object[]])) {
@@ -2327,24 +2462,24 @@ function New-ADAccountForStorageAccount {
     # Get the kerb key and convert it to a secure string password.
     #
 
-    $kerb1Key = Get-AzStorageAccountKey -ResourceGroupName $ResourceGroupName -Name $StorageAccountName -ListKerbKey `
+    $kerb1Key = Get-AzStorageAccountKerbKeys -ResourceGroupName $ResourceGroupName -StorageAccountName $StorageAccountName `
         -ErrorAction Stop | Where-Object { $_.KeyName -eq "kerb1" };
 
     $fileServiceAccountPwdSecureString = ConvertTo-SecureString -String $kerb1Key.Value -AsPlainText -Force
 
     # Get SPN
     $spnValue = Get-ServicePrincipalName `
-            -storageAccountName $StorageAccountName `
-            -resourceGroupName $ResourceGroupName `
+            -StorageAccountName $StorageAccountName `
+            -ResourceGroupName $ResourceGroupName `
             -ErrorAction Stop
 
     # Check to see if SPN already exists
     $computerSpnMatch = Get-ADComputer `
-            -Filter { ServicePrincipalNames -eq $spnValue } `
+            -Filter "ServicePrincipalNames -eq '$spnValue'" `
             -Server $Domain
 
     $userSpnMatch = Get-ADUser `
-            -Filter { ServicePrincipalNames -eq $spnValue } `
+            -Filter "ServicePrincipalNames -eq '$spnValue'" `
             -Server $Domain
 
     if (($null -ne $computerSpnMatch) -and ($null -ne $userSpnMatch)) {
@@ -2537,38 +2672,46 @@ function Get-AzStorageAccountADObject {
     }
 
     process {
+        
         if ($PSCmdlet.ParameterSetName -eq "StorageAccountName" -or 
             $PSCmdlet.ParameterSetName -eq "StorageAccount") {
 
             if ($PSCmdlet.ParameterSetName -eq "StorageAccountName") {
-                $StorageAccount = Get-AzStorageAccount -ResourceGroupName $ResourceGroupName -Name $StorageAccountName
+                $activeDirectoryProperties = Get-AzStorageAccountActiveDirectoryProperties `
+                    -ResourceGroupName $ResourceGroupName -StorageAccountName $StorageAccountName -ErrorAction Stop
+            } else {
+                $activeDirectoryProperties = Get-AzStorageAccountActiveDirectoryProperties `
+                    -StorageAccount $StorageAccount -ErrorAction Stop
+
+                $ResourceGroupName = $StorageAccount.ResourceGroupName
+                $StorageAccountName = $StorageAccount.StorageAccountName    
             }
 
-            if ($null -eq $StorageAccount.AzureFilesIdentityBasedAuth.ActiveDirectoryProperties) {
-                return
-            }
+            $sid = $activeDirectoryProperties.AzureStorageSid
+            $Domain = $activeDirectoryProperties.DomainName
 
-            $sid = $StorageAccount.AzureFilesIdentityBasedAuth.ActiveDirectoryProperties.AzureStorageSid
-            $Domain = $StorageAccount.AzureFilesIdentityBasedAuth.ActiveDirectoryProperties.DomainName
+            Write-Verbose -Message "Looking for an object with SID '$sid' in domain '$Domain' for storage account '$StorageAccountName'"
+            $obj = Get-ADObject -Server $Domain -Filter "objectSID -eq '$sid'" -ErrorAction Stop
 
-            Write-Verbose `
-                -Message ("Object for storage account " + $StorageAccount.StorageAccountName + " has SID=$sid in Domain $Domain")
-
-            $obj = Get-ADObject `
-                -Server $Domain `
-                -Filter { objectSID -eq $sid } `
-                -ErrorAction Stop
+            if ($null -eq $obj) {
+                $message = "Cannot find an object with a SID '$sid' in domain '$Domain' for" `
+                    + " storage account '$StorageAccountName' in resource group '$ResourceGroupName'." `
+                    + " Please verify that the storage account has been domain-joined through the steps" `
+                    + " in Microsoft documentation:" `
+                    + " https://docs.microsoft.com/en-us/azure/storage/files/storage-files-identity-auth-active-directory-enable#12-domain-join-your-storage-account"
+                Write-Error -Message $message -ErrorAction Stop
+            }    
         } else {
-            $obj = Get-ADObject `
-                -Server $Domain `
-                -Filter { Name -eq $ADObjectName } `
-                -ErrorAction Stop
-        }
+            Write-Verbose -Message "Looking for an object with name '$ADObjectName' in domain '$Domain'"
+            $obj = Get-ADObject -Server $Domain -Filter "Name -eq '$ADObjectName'" -ErrorAction Stop
 
-        if ($null -eq $obj) {
-            Write-Error `
-                -Message "AD object not found in $Domain" `
-                -ErrorAction Stop
+            if ($null -eq $obj) {
+                $message = "Cannot find an object with a '$ADObjectname' in domain '$Domain'." `
+                    + " Please verify that the storage account has been domain-joined through the steps" `
+                    + " in Microsoft documentation:" `
+                    + " https://docs.microsoft.com/en-us/azure/storage/files/storage-files-identity-auth-active-directory-enable#12-domain-join-your-storage-account"
+                Write-Error -Message $message -ErrorAction Stop
+            }    
         }
 
         Write-Verbose -Message ("Found AD object: " + $obj.DistinguishedName + " of class " + $obj.ObjectClass + ".")
@@ -2603,6 +2746,82 @@ function Get-AzStorageAccountADObject {
     }
 }
 
+function Get-CmdKeyTarget {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory=$True, Position=0, HelpMessage="CmdKey target name to search, e.g., account.file.core.windows.net")]
+        [string]$TargetName
+    )
+
+    begin {
+        Assert-IsWindows
+    }
+
+    Process {
+        Write-Verbose "Looking for cached credential for $TargetName"
+
+        $output = cmdkey.exe /list
+
+        $target = New-Object PSObject
+
+        $targetFound = $false
+        $typeFound = $false
+        $userFound = $false
+
+        foreach ($line in $output)
+        {
+            Write-Verbose $line
+            $line = $line.Trim()
+
+            #
+            # Target: Domain:target=account.file.core.windows.net
+            # Type: Domain Password
+            # User: Azure\account
+            #
+
+            if ($line.StartsWith("Target:") -and $line.EndsWith("target=$TargetName"))
+            {
+                Write-Verbose "Found target $line"
+                $propName = "Target"
+                $propValue = $line.Substring($propName.Length + 1).Trim()
+
+                Add-Member -InputObject $target -MemberType NoteProperty -Name $propName -Value $propValue -ErrorAction Stop
+                $targetFound = $True
+            }
+            elseif ($targetFound -and $line.StartsWith("Type:"))
+            {
+                Write-Verbose "Found type $line"
+                $propName = "Type"
+                $propValue = $line.Substring($propName.Length + 1).Trim()
+                Add-Member -InputObject $target -MemberType NoteProperty -Name $propName -Value $propValue -ErrorAction Stop
+                $typeFound = $True
+            }
+            elseif ($targetFound -and $typeFound -and $line.StartsWith("User:"))
+            {
+                Write-Verbose "Found user $line"
+                $propName = "User"
+                $propValue = $line.Substring($propName.Length + 1).Trim()
+                Add-Member -InputObject $target -MemberType NoteProperty -Name $propName -Value $propValue -ErrorAction Stop
+                $userFound = $True
+                break
+            }
+        }
+
+        if (-not $userFound)
+        {
+            $target = $null
+        }
+        else
+        {
+            Write-Verbose "Found target object"
+            Write-Verbose "Target: $($target.Target)"
+            Write-Verbose "Type: $($target.Type)"
+            Write-Verbose "User: $($target.User)"
+        }
+
+        return $target
+    }
+}
 
 function Get-AzStorageKerberosTicketStatus {
     <#
@@ -2624,10 +2843,10 @@ function Get-AzStorageKerberosTicketStatus {
 
     param (
         [Parameter(Mandatory=$True, Position=0, HelpMessage="Storage account name")]
-        [string]$storageAccountName,
+        [string]$StorageAccountName,
 
         [Parameter(Mandatory=$True, Position=1, HelpMessage="Resource group name")]
-        [string]$resourceGroupName
+        [string]$ResourceGroupName
     )
 
     begin {
@@ -2636,10 +2855,8 @@ function Get-AzStorageKerberosTicketStatus {
 
     process 
     {
-        $spnValue = Get-ServicePrincipalName `
-            -storageAccountName $storageAccountName `
-            -resourceGroupName $resourceGroupName `
-            -ErrorAction Stop
+        $spnValue = Get-ServicePrincipalName -StorageAccountName $StorageAccountName `
+            -ResourceGroupName $ResourceGroupName -ErrorAction Stop
 
         Write-Verbose "Running command 'klist.exe get $spnValue'"
 
@@ -2665,12 +2882,11 @@ function Get-AzStorageKerberosTicketStatus {
                 # The SAM database on the Windows Server does not have a computer account for this workstation trust relationship.
                 #
 
-                Write-Error "ERROR: `
-                    The domain cannot find a computer or user object for this storage account.
-                    Please verify that the storage account has been domain-joined through the steps in Microsoft documentation: `
-                    `
-                    https://docs.microsoft.com/en-us/azure/storage/files/storage-files-identity-auth-active-directory-enable#12-domain-join-your-storage-account " `
-                     -ErrorAction Stop
+                $message = "ERROR: The domain cannot find a computer or user object for" `
+                    + " storage account '$StorageAccountName'. Please verify that the storage account has been domain-joined" `
+                    + " through the steps in Microsoft documentation:" `
+                    + " https://docs.microsoft.com/en-us/azure/storage/files/storage-files-identity-auth-active-directory-enable#12-domain-join-your-storage-account"
+                Write-Error -Message $message -ErrorAction Stop
             }
             elseif ($line -match "0x80090342")
             {
@@ -2679,14 +2895,52 @@ function Get-AzStorageKerberosTicketStatus {
                 # The encryption type requested is not supported by the KDC.
                 #
 
-                Write-Error "ERROR: `
-                    Azure Files only supports Kerberos authentication with AD with RC4-HMAC encryption - which is being blocked by the KDC (Kerberos Key Distribution Center). `
-                    AES Kerberos encryption is not yet supported by Azure Files at this time.  To unblock authentication with RC4-HMAC encryption, please examine your group policy for `
-                    'Network security: Configure encryption types allowed for Kerberos' and add RC4-HMAC as an allowed encryption type.
-                    `
-                    https://docs.microsoft.com/en-us/windows/security/threat-protection/security-policy-settings/network-security-configure-encryption-types-allowed-for-kerberos" `
-                    -ErrorAction Stop
+                $message = "ERROR: Azure Files supports Kerberos authentication with" `
+                    + " AD with AES256 and RC4-HMAC encryption. This error may happen when RC4-HMAC" `
+                    + " is blocked by the KDC (Kerberos Key Distribution Center). It is recommended" `
+                    + " to update the storage account setup to use AES256 Kerberos encryption by using cmdlet" `
+                    + " Update-AzStorageAccountAuthForAES256 -ResourceGroupName '$ResourceGroupName' -StorageAccountName '$StorageAccountName'"
+                Write-Error -Message $message -ErrorAction Stop
+            }
+            elseif ($line -match "0x80090303")
+            {
+                #
+                # SEC_E_TARGET_UNKNOWN
+                # klist failed with 0x80090303/-2146893053: The specified target is unknown or unreachable
+                #
 
+                Write-Verbose "ERROR: $line"
+
+                $targetName = $spnValue.Split('/')[1]
+
+                $target = Get-CmdKeyTarget -TargetName $targetName
+
+                if ($null -eq $target)
+                {
+                    $message = "Unable to find the cached credential for '$targetName'." `
+                        + " Original klist error 0x80090303 is unexpected."
+                    Write-Error -Message $message -ErrorAction Stop
+                }
+                else
+                {
+                    Write-Verbose "Executing 'cmdkey.exe /delete:$($target.Target)'"
+
+                    cmdkey.exe /delete:$($target.Target)
+                    
+                    $target = Get-CmdKeyTarget -TargetName $targetName
+
+                    if ($null -ne $target)
+                    {
+                        $message = "Unable to delete the cached credential for $($target.Target)." `
+                            + " Please manually delete it and retry this cmdlet."
+                        Write-Error -Message $message -ErrorAction Stop
+                    }
+
+                    Write-Verbose -Message "Retrying Get-AzStorageKerberosTicketStatus with storageAccountName $StorageAccountName and resourceGroupName $ResourceGroupName"
+
+                    return Get-AzStorageKerberosTicketStatus -StorageAccountName $StorageAccountName `
+                        -ResourceGroupName $ResourceGroupName -ErrorAction Stop
+                }
             }
             elseif ($line -match "^#\d")
             {
@@ -2717,7 +2971,7 @@ function Get-AzStorageKerberosTicketStatus {
                     # We found a ticket to an Azure storage account.  Check that it has valid encryption type.
                     #
                     
-                    if ($KerbTicketEType -notmatch "RC4")
+                    if (($KerbTicketEType -notmatch "RC4") -and ($KerbTicketEType -notmatch "AES-256"))
                     {
                         $WarningMessage = "Unhealthy - Unsupported KerbTicket Encryption Type $KerbTicketEType"
                         Add-Member -InputObject $Ticket -MemberType NoteProperty -Name "Azure Files Health Status" -Value $WarningMessage
@@ -2811,10 +3065,10 @@ function Test-Port445Connectivity
 
     param (
         [Parameter(Mandatory=$True, Position=0, HelpMessage="Storage account name")]
-        [string]$storageAccountName,
+        [string]$StorageAccountName,
 
         [Parameter(Mandatory=$True, Position=1, HelpMessage="Resource group name")]
-        [string]$resourceGroupName
+        [string]$ResourceGroupName
     )
 
     process
@@ -2823,21 +3077,25 @@ function Test-Port445Connectivity
         # Test-NetConnection -ComputerName <storageAccount>.file.core.windows.net -Port 445
         #
 
-        $storageAccountObject = Get-AzStorageAccount -ResourceGroup $resourceGroupName -Name $storageAccountName;
+        $fileEndpoint = Get-AzStorageAccountFileEndpoint -ResourceGroupName $ResourceGroupName `
+            -StorageAccountName $StorageAccountName -ErrorAction Stop
 
-        $endpoint = $storageAccountObject.PrimaryEndpoints.File -replace 'https://', ''
+        $endpoint = $fileEndpoint -replace 'https://', ''
         $endpoint = $endpoint -replace '/', ''
 
         Write-Verbose "Executing 'Test-NetConnection -ComputerName $endpoint -Port 445'"
 
-        $result = Test-NetConnection -ComputerName $endpoint -Port 445;
+        $result = Test-NetConnection -ComputerName $endpoint -Port 445
 
         if ($result.TcpTestSucceeded -eq $False)
         {
-            Write-Error "Unable to reach the storage account file endpoint.  To debug connectivity problems, please refer to `
-                the troubleshooting tool for Azure Files mounting errors on Windows, 'AzFileDiagnostics.ps1' `
-
-                https://gallery.technet.microsoft.com/Troubleshooting-tool-for-a9fa1fe5" -ErrorAction Stop
+            $message = "Unable to reach the storage account file endpoint." `
+                + " To debug connectivity problems, please refer to the troubleshooting tool for Azure" `
+                + " Files mounting errors on Windows, 'AzFileDiagnostics.ps1'" `
+                + " (https://gallery.technet.microsoft.com/Troubleshooting-tool-for-a9fa1fe5)." `
+                + " For possible solutions please refer to" `
+                + " https://docs.microsoft.com/en-us/azure/storage/files/storage-troubleshoot-windows-file-connection-problems#cause-1-port-445-is-blocked"
+            Write-Error -Message $message -ErrorAction Stop
         }
     }
 }
@@ -2849,52 +3107,115 @@ function Debug-AzStorageAccountADObject
 
     param (
         [Parameter(Mandatory=$True, Position=0, HelpMessage="Storage account name")]
-        [string]$storageAccountName,
+        [string]$StorageAccountName,
 
         [Parameter(Mandatory=$True, Position=1, HelpMessage="Resource group name")]
-        [string]$resourceGroupName
+        [string]$ResourceGroupName
     )
 
     process
     {
-        $azureStorageIdentity = Get-AzStorageAccountADObject -storageaccountName $StorageAccountName -ResourceGroupName $ResourceGroupName;
-
         #
         # Check if the object exists.
         #
-
-        if ($azureStorageIdentity -eq $null)
-        {
-            Write-Error "ERROR: `
-                The domain cannot find a computer or user object for this storage account.
-                Please verify that the storage account has been domain-joined through the steps in Microsoft documentation: `
-                `
-                https://docs.microsoft.com/en-us/azure/storage/files/storage-files-identity-auth-active-directory-enable#12-domain-join-your-storage-account " `
-                -ErrorAction Stop
-        }
-
+    
+        $azureStorageIdentity = Get-AzStorageAccountADObject -StorageAccountName $StorageAccountName `
+            -ResourceGroupName $ResourceGroupName -ErrorAction Stop
         #
         # Check if the object has the correct SPN (Service Principal Name)
         #
 
-        $expectedSpnValue = Get-ServicePrincipalName `
-            -storageAccountName $storageAccountName `
-            -resourceGroupName $resourceGroupName `
-            -ErrorAction Stop
+        $expectedSpnValue = Get-ServicePrincipalName -StorageAccountName $StorageAccountName `
+            -ResourceGroupName $ResourceGroupName -ErrorAction Stop
 
-        $properSpnSet = $azureStorageIdentity.ServicePrincipalNames.Contains($expectedSpnValue);
+        $properSpnSet = $azureStorageIdentity.ServicePrincipalNames.Contains($expectedSpnValue)
 
-        if ($properSpnSet -eq $False)
-        {
-            Write-Error "The AD object $($azureStorageIdentity.Name) does not have the proper SPN of '$expectedSpnValue' `
-                Please run the following command to repair the object in AD: 
-
-                'Set-AD$($azureStorageIdentity.ObjectClass) -Identity $($azureStorageIdentity.Name) -ServicePrincipalNames @{Add=`"$expectedSpnValue`"}'" `
-                -ErrorAction Stop
+        if ($properSpnSet -eq $False) {
+            $message = "The AD object $($azureStorageIdentity.Name) does not have the proper SPN" `
+                + " of '$expectedSpnValue'. Please run the following command to repair the object in AD:" `
+                + " 'Set-AD$($azureStorageIdentity.ObjectClass) -Identity $($azureStorageIdentity.Name) -ServicePrincipalNames @{Add=`"$expectedSpnValue`"}'"
+            Write-Error -Message $message -ErrorAction Stop
         }
     }
 }
 
+function Get-OnPremAdUser {
+    [CmdletBinding()]
+    param (
+        [Parameter(Mandatory=$False, Position=0, HelpMessage="The user name or SID to look up the user")]
+        [string]$Identity,
+
+        [Parameter(Mandatory=$False, Position=1, HelpMessage="The domain name to look up the user")]
+        [string]$Domain
+    )
+    process {
+        if ([string]::IsNullOrEmpty($Identity)) {
+            $Identity = $($env:UserName)
+        }
+
+        if ([string]::IsNullOrEmpty($Domain)) {
+            $Domain = (Get-ADDomain).DnsRoot
+        }
+
+        Write-Verbose "Look up user $Identity in domain $Domain"
+
+        $user = Get-ADUser -Identity $Identity -Server $Domain
+
+        if ($null -eq $user) {
+            $message = "User '$Identity' not found in domain '$Domain'. Please check" `
+                + " whether the provided user identity or domain name is correct or not."
+            Write-Error -Message $message -ErrorAction Stop
+        }
+
+        return $user
+    }
+}
+
+function Get-OnPremAdUserGroups {
+    [CmdletBinding()]
+    param (
+        [Parameter(Mandatory=$False, Position=0, HelpMessage="The user name or SID to look up the user groups")]
+        [string]$Identity,
+
+        [Parameter(Mandatory=$False, Position=1, HelpMessage="The domain name to look up the user groups")]
+        [string]$Domain
+    )
+    process {
+        if ([string]::IsNullOrEmpty($Identity)) {
+            $Identity = $($env:UserName)
+        }
+
+        if ([string]::IsNullOrEmpty($Domain)) {
+            $Domain = (Get-ADDomain).DnsRoot
+        }
+
+        Write-Verbose "Look up groups of user $Identity in domain $Domain"
+
+        $groups = Get-ADPrincipalGroupMembership -Identity $Identity -Server $Domain
+
+        if ($null -eq $groups) {
+            $message = "Groups of use '$Identity' not found in domain '$Domain'. Please check" `
+                + " whether the provided user identity or domain name is correct or not."
+            Write-Error -Message $message -ErrorAction Stop
+        }
+
+        return $groups
+    }
+}
+
+class CheckResult {
+    [string]$Name
+    [string]$Result
+    [string]$Issue
+
+    CheckResult(
+        [string]$Name
+    ) {
+        $this.Name = $Name
+        $this.Result = "Skipped"
+        $this.Issue = ""
+    }
+}
 
 function Debug-AzStorageAccountAuth {
     <#
@@ -2923,14 +3244,17 @@ function Debug-AzStorageAccountAuth {
         [Parameter(Mandatory=$False, Position=2, HelpMessage="Filter")]
         [string]$Filter,
 
-        [Parameter(Mandatory=$False, Position=3, HelpMessage="Optional parameter for filter 'CheckSidHasAadUser'. The user name to check.")]
+        [Parameter(Mandatory=$False, Position=3, HelpMessage="Optional parameter for filter 'CheckSidHasAadUser' and 'CheckUserFileAccess'. The user name to check.")]
         [string]$UserName,
 
-        [Parameter(Mandatory=$False, Position=4, HelpMessage="Optional parameter for filter 'CheckSidHasAadUser' and 'CheckAadUserHasSid'. The domain name to look up the user.")]
+        [Parameter(Mandatory=$False, Position=4, HelpMessage="Optional parameter for filter 'CheckSidHasAadUser', 'CheckUserFileAccess' and 'CheckAadUserHasSid'. The domain name to look up the user.")]
         [string]$Domain,
 
-        [Parameter(Mandatory=$False, Position=3, HelpMessage="Required parameter for filter 'CheckAadUserHasSid'. The Azure object ID or user principal name to check.")]
-        [string]$ObjectId
+        [Parameter(Mandatory=$False, Position=5, HelpMessage="Required parameter for filter 'CheckAadUserHasSid'. The Azure object ID or user principal name to check.")]
+        [string]$ObjectId,
+
+        [Parameter(Mandatory=$False, Position=6, HelpMessage="Required parameter for filter 'CheckUserFileAccess'. The SMB file path on the Azure file share mounted locally using storage account key.")]
+        [string]$FilePath
     )
 
     process
@@ -2938,14 +3262,16 @@ function Debug-AzStorageAccountAuth {
         $checksExecuted = 0;
         $filterIsPresent = ![string]::IsNullOrEmpty($Filter);
         $checks = @{
-            "CheckPort445Connectivity" = "Skipped";
-            "CheckDomainJoined" = "Skipped";
-            "CheckADObject" = "Skipped";
-            "CheckGetKerberosTicket" = "Skipped";
-            "CheckADObjectPasswordIsCorrect" = "Skipped";
-            "CheckSidHasAadUser" = "Skipped";
-            "CheckAadUserHasSid" = "Skipped";
-            "CheckStorageAccountDomainJoined" = "Skipped";
+            "CheckPort445Connectivity" = [CheckResult]::new("CheckPort445Connectivity");
+            "CheckDomainJoined" = [CheckResult]::new("CheckDomainJoined");
+            "CheckADObject" = [CheckResult]::new("CheckADObject");
+            "CheckGetKerberosTicket" = [CheckResult]::new("CheckGetKerberosTicket");
+            "CheckADObjectPasswordIsCorrect" = [CheckResult]::new("CheckADObjectPasswordIsCorrect");
+            "CheckSidHasAadUser" = [CheckResult]::new("CheckSidHasAadUser");
+            "CheckAadUserHasSid" = [CheckResult]::new("CheckAadUserHasSid");
+            "CheckStorageAccountDomainJoined" = [CheckResult]::new("CheckStorageAccountDomainJoined");
+            "CheckUserRbacAssignment" = [CheckResult]::new("CheckUserRbacAssignment");
+            "CheckUserFileAccess" = [CheckResult]::new("CheckUserFileAccess");
         }
 
         #
@@ -2958,12 +3284,14 @@ function Debug-AzStorageAccountAuth {
                 $checksExecuted += 1;
                 Write-Verbose "CheckPort445Connectivity - START"
 
-                Test-Port445Connectivity -storageaccountName $StorageAccountName -ResourceGroupName $ResourceGroupName;
+                Test-Port445Connectivity -StorageAccountName $StorageAccountName `
+                    -ResourceGroupName $ResourceGroupName -ErrorAction Stop
 
-                $checks["CheckPort445Connectivity"] = "Passed"
+                $checks["CheckPort445Connectivity"].Result = "Passed"
                 Write-Verbose "CheckPort445Connectivity - SUCCESS"
             } catch {
-                $checks["CheckPort445Connectivity"] = "Failed"
+                $checks["CheckPort445Connectivity"].Result = "Failed"
+                $checks["CheckPort445Connectivity"].Issue = $_
                 Write-Error "CheckPort445Connectivity - FAILED"
                 Write-Error $_
             }
@@ -2981,14 +3309,18 @@ function Debug-AzStorageAccountAuth {
         
                 if (!(Get-IsDomainJoined))
                 {
-                    Write-Error -Message "Machine is not domain-joined.  Mounting to Azure Files through Active Directory Authentication is `
-                        only supported when the computer is joined to an Active Directory domain." -ErrorAction Stop
+                    $message = "Machine is not domain-joined. Mounting to Azure Files through" `
+                        + " Active Directory Authentication is only supported when the computer is joined to" `
+                        + " an Active Directory domain, which is synced to Azure AD with Azure AD Connect" `
+                        + " (https://docs.microsoft.com/en-us/azure/storage/files/storage-files-identity-auth-active-directory-enable#prerequisites)"
+                    Write-Error -Message $message -ErrorAction Stop
                 }
 
-                $checks["CheckDomainJoined"] = "Passed"
+                $checks["CheckDomainJoined"].Result = "Passed"
                 Write-Verbose "CheckDomainJoined - SUCCESS"
             } catch {
-                $checks["CheckDomainJoined"] = "Failed"
+                $checks["CheckDomainJoined"].Result = "Failed"
+                $checks["CheckDomainJoined"].Issue = $_
                 Write-Error "CheckDomainJoined - FAILED"
                 Write-Error $_
             }
@@ -3000,12 +3332,14 @@ function Debug-AzStorageAccountAuth {
                 $checksExecuted += 1;
                 Write-Verbose "CheckADObject - START"
 
-                Debug-AzStorageAccountADObject -storageaccountName $StorageAccountName -ResourceGroupName $ResourceGroupName;
+                Debug-AzStorageAccountADObject -StorageAccountName $StorageAccountName `
+                    -ResourceGroupName $ResourceGroupName -ErrorAction Stop
 
-                $checks["CheckADObject"] = "Passed"
+                $checks["CheckADObject"].Result = "Passed"
                 Write-Verbose "CheckADObject - SUCCESS"
             } catch {
-                $checks["CheckADObject"] = "Failed"
+                $checks["CheckADObject"].Result = "Failed"
+                $checks["CheckADObject"].Issue = $_
                 Write-Error "CheckADObject - FAILED"
                 Write-Error $_
             }
@@ -3017,12 +3351,14 @@ function Debug-AzStorageAccountAuth {
                 $checksExecuted += 1;
                 Write-Verbose "CheckGetKerberosTicket - START"
 
-                Get-AzStorageKerberosTicketStatus -storageaccountName $StorageAccountName -ResourceGroupName $ResourceGroupName;
+                Get-AzStorageKerberosTicketStatus -StorageaccountName $StorageAccountName `
+                    -ResourceGroupName $ResourceGroupName -ErrorAction Stop
 
-                $checks["CheckGetKerberosTicket"] = "Passed"
+                $checks["CheckGetKerberosTicket"].Result = "Passed"
                 Write-Verbose "CheckGetKerberosTicket - SUCCESS"
             } catch {
-                $checks["CheckGetKerberosTicket"] = "Failed"
+                $checks["CheckGetKerberosTicket"].Result = "Failed"
+                $checks["CheckGetKerberosTicket"].Issue = $_
                 Write-Error "CheckGetKerberosTicket - FAILED"
                 Write-Error $_
             }
@@ -3034,21 +3370,14 @@ function Debug-AzStorageAccountAuth {
                 $checksExecuted += 1;
                 Write-Verbose "CheckADObjectPasswordIsCorrect - START"
 
-                $keyMatches = Test-AzStorageAccountADObjectPasswordIsKerbKey -StorageAccountName $StorageAccountName -ResourceGroupName $ResourceGroupName;
+                Test-AzStorageAccountADObjectPasswordIsKerbKey -StorageAccountName $StorageAccountName `
+                    -ResourceGroupName $ResourceGroupName -ErrorIfNoMatch -ErrorAction Stop
 
-                if ($keyMatches.Count -eq 0)
-                {
-                    Write-Error `
-                        -Message ("Password for $userName does not match kerb1 or kerb2 of storage account: $StorageAccountName." + `
-                        "Please run the following command to resync the AD password with the kerb key of the storage account and " +  `
-                        "retry: Update-AzStorageAccountADObjectPassword.") -ErrorAction Stop
-
-                }
-
-                $checks["CheckADObjectPasswordIsCorrect"] = "Passed"
+                $checks["CheckADObjectPasswordIsCorrect"].Result = "Passed"
                 Write-Verbose "CheckADObjectPasswordIsCorrect - SUCCESS"
             } catch {
-                $checks["CheckADObjectPasswordIsCorrect"] = "Failed"
+                $checks["CheckADObjectPasswordIsCorrect"].Result = "Failed"
+                $checks["CheckADObjectPasswordIsCorrect"].Issue = $_
                 Write-Error "CheckADObjectPasswordIsCorrect - FAILED"
                 Write-Error $_
             }
@@ -3060,28 +3389,27 @@ function Debug-AzStorageAccountAuth {
                 $checksExecuted += 1;
                 Write-Verbose "CheckSidHasAadUser - START"
 
-                if ([string]::IsNullOrEmpty($UserName)) {
-                    $UserName = $($env:UserName)
-                }
-
-                if ([string]::IsNullOrEmpty($Domain)) {
-                    $Domain = (Get-ADDomain).DnsRoot
-                }
-
-                Write-Verbose "CheckSidHasAadUser for user $UserName in domain $Domain"
-
-                $currentUser = Get-ADUser -Identity $UserName -Server $Domain
+                $currentUser = Get-OnPremAdUser -Identity $UserName -Domain $Domain -ErrorAction Stop
 
                 Write-Verbose "User $UserName in domain $Domain has SID = $($currentUser.Sid)"
 
                 $aadUser = Get-AadUserForSid $currentUser.Sid
 
+                if ($null -eq $aadUser) {
+                    $message = "Cannot find an AAD user with SID '$($currentUser.Sid) for" `
+                        + " user $UserName' in domain '$Domain'. Please ensure the domain '$Domain' is" `
+                        + " synced to Azure Active Directory using Azure AD Connect" `
+                        + " (https://docs.microsoft.com/en-us/azure/active-directory/hybrid/how-to-connect-install-roadmap)"
+                    Write-Error -Message $message -ErrorAction Stop
+                }
+
                 Write-Verbose "Found AAD user '$($aadUser.UserPrincipalName)' for SID $($currentUser.Sid)"
 
-                $checks["CheckSidHasAadUser"] = "Passed"
+                $checks["CheckSidHasAadUser"].Result = "Passed"
                 Write-Verbose "CheckSidHasAadUser - SUCCESS"
             } catch {
-                $checks["CheckSidHasAadUser"] = "Failed"
+                $checks["CheckSidHasAadUser"].Result = "Failed"
+                $checks["CheckSidHasAadUser"].Issue = $_
                 Write-Error "CheckSidHasAadUser - FAILED"
                 Write-Error $_
             }
@@ -3095,7 +3423,7 @@ function Debug-AzStorageAccountAuth {
 
                 if ([string]::IsNullOrEmpty($ObjectId)) {
                     Write-Verbose -Message "Missing required parameter ObjectId for CheckAadUserHasSid requires ObjectId parameter to be present, skipping CheckAadUserHasSid"
-                    $checks["CheckAadUserHasSid"] = "Skipped"
+                    $checks["CheckAadUserHasSid"].Result = "Skipped"
                 }
                 else {
                 
@@ -3108,27 +3436,35 @@ function Debug-AzStorageAccountAuth {
                     $aadUser = Get-AzureADUser -ObjectId $ObjectId
 
                     if ($null -eq $aadUser) {
-                        Write-Error -Message "Cannot find Azure AD user $ObjectId" -ErrorAction Stop
+                        $message = "Cannot find an Azure AD user with ObjectId $ObjectId. Please check" `
+                            + " whether the provided ObjecId is correct or not."
+                        Write-Error -Message $message -ErrorAction Stop
                     }
 
                     if ([string]::IsNullOrEmpty($aadUser.OnPremisesSecurityIdentifier)) {
-                        Write-Error -Message "Azure AD user $ObjectId has no OnPremisesSecurityIdentifier" -ErrorAction Stop
+                        $message = "Azure AD user $ObjectId has no OnPremisesSecurityIdentifier. Please" `
+                            + " ensure the domain '$Domain' is synced to Azure Active Directory using Azure AD Connect" `
+                            + " (https://docs.microsoft.com/en-us/azure/active-directory/hybrid/how-to-connect-install-roadmap)"
+                        Write-Error -Message $message -ErrorAction Stop
                     }
 
                     $user = Get-ADUser -Identity $aadUser.OnPremisesSecurityIdentifier -Server $Domain
 
                     if ($null -eq $user) {
-                        Write-Error -Message "Azure AD user $ObjectId's SID $($aadUser.OnPremisesSecurityIdentifier) is not found in domain $Domain" -ErrorAction Stop
+                        $message = "Azure AD user $ObjectId's SID $($aadUser.OnPremisesSecurityIdentifier)" `
+                            + " is not found in domain $Domain. Please check whether the provided SID is correct."
+                        Write-Error -Message $message -ErrorAction Stop
                     }
 
                     Write-Verbose "Azure AD user $ObjectId has SID $($aadUser.OnPremisesSecurityIdentifier) in domain $Domain"
 
-                    $checks["CheckAadUserHasSid"] = "Passed"
+                    $checks["CheckAadUserHasSid"].Result = "Passed"
                     Write-Verbose "CheckAadUserHasSid - SUCCESS"
                 }
 
             } catch {
-                $checks["CheckAadUserHasSid"] = "Failed"
+                $checks["CheckAadUserHasSid"].Result = "Failed"
+                $checks["CheckAadUserHasSid"].Issue = $_
                 Write-Error "CheckAadUserHasSid - FAILED"
                 Write-Error $_
             }
@@ -3140,43 +3476,196 @@ function Debug-AzStorageAccountAuth {
                 $checksExecuted += 1
                 Write-Verbose "CheckStorageAccountDomainJoined - START"
 
-                $storageAccount = Validate-StorageAccount -ResourceGroup $ResourceGroupName -Name $StorageAccountName
+                $activeDirectoryProperties = Get-AzStorageAccountActiveDirectoryProperties `
+                    -ResourceGroupName $ResourceGroupName -StorageAccountName $StorageAccountName -ErrorAction Stop
 
-                if ($null -ne $StorageAccount.AzureFilesIdentityBasedAuth.ActiveDirectoryProperties) {
-                    Write-Verbose "Storage account $StorageAccountName is already joined in domain $($StorageAccount.AzureFilesIdentityBasedAuth.ActiveDirectoryProperties.DomainName)."
-                } else {
-                    Write-Error -Message "Storage account $StorageAccountName is not domain joined." -ErrorAction Stop
-                }
-
-                $checks["CheckStorageAccountDomainJoined"] = "Passed"
+                Write-Verbose -Message "Storage account $StorageAccountName is already joined in domain $($activeDirectoryProperties.DomainName)."
+                
+                $checks["CheckStorageAccountDomainJoined"].Result = "Passed"
                 Write-Verbose "CheckStorageAccountDomainJoined - SUCCESS"
             } catch {
-                $checks["CheckStorageAccountDomainJoined"] = "Failed"
+                $checks["CheckStorageAccountDomainJoined"].Result = "Failed"
+                $checks["CheckStorageAccountDomainJoined"].Issue = $_
                 Write-Error "CheckStorageAccountDomainJoined - FAILED"
+                Write-Error $_
+            }
+        }
+
+        if (!$filterIsPresent -or ($Filter -match "CheckUserRbacAssignment")) {
+            try {
+                $checksExecuted += 1
+                Write-Verbose "CheckUserRbacAssignment - START"
+
+                Request-ConnectAzureAD
+
+                $sidNames = @{}
+                $user = Get-OnPremAdUser -Identity $UserName -Domain $Domain -ErrorAction Stop
+                $sidNames[$user.SID.Value] = $user.DistinguishedName
+
+                $groups = Get-OnPremAdUserGroups -Identity $user.SID -Domain $Domain -ErrorAction Stop
+                $groups | ForEach-Object { $sidNames[$_.SID.Value] = $_.DistinguishedName }
+
+                # The user needs following role assignments to have the share-level access.
+                # Currently only three roles are defined, but new ones may be added in future,
+                # hence use a prefix to check.
+                # Storage File Data SMB Share Reader
+                # Storage File Data SMB Share Contributor
+                # Storage File Data SMB Share Elevated Contributor
+                $smbRoleNamePrefix = "Storage File Data SMB Share"
+                $smbRoleDefinitions = @{}
+                Get-AzRoleDefinition | Where-Object { $_.Name.StartsWith($smbRoleNamePrefix) } `
+                    | ForEach-Object { $smbRoleDefinitions[$_.Id] = $_ }
+                
+                $roleAssignments = Get-AzRoleAssignment -ResourceGroupName $ResourceGroupName `
+                    -ResourceName $StorageAccountName -ResourceType Microsoft.Storage/storageAccounts `
+                    | Where-Object { $smbRoleDefinitions.ContainsKey($_.RoleDefinitionId) }
+
+                $roleDefinitions = @{}
+                $assignedAdObjects = @{}
+
+                foreach ($assignment in $roleAssignments) {
+                    $aadObject = Get-AzureADObjectByObjectId -ObjectId $assignment.ObjectId
+
+                    if (($null -ne $aadObject) `
+                        -and (-not [string]::IsNullOrEmpty($aadObject.OnPremisesSecurityIdentifier)) `
+                        -and ($sidNames.ContainsKey($aadObject.OnPremisesSecurityIdentifier))) {
+                        if (-not $roleDefinitions.ContainsKey($assignment.RoleDefinitionId)) {
+                            $roleDefinitions[$assignment.RoleDefinitionId] = $smbRoleDefinitions[$assignment.RoleDefinitionId]
+                        }
+
+                        if (-not $assignedAdObjects.ContainsKey($assignment.RoleDefinitionId)) {
+                            $assignedAdObjects[$assignment.RoleDefinitionId] = @()
+                        }
+
+                        $assignedAdObjects[$assignment.RoleDefinitionId] += $sidNames[$aadObject.OnPremisesSecurityIdentifier]
+                    }
+                }
+
+                if ($roleDefinitions.Count -eq 0) {
+                    $message = "User '$($user.UserPrincipalName)' is not assigned any SMB share-level permission to" `
+                        + " storage account '$StorageAccountName' in resource group '$ResourceGroupName'. Please" `
+                        + " configure proper share-level permission following the guidance at" `
+                        + " https://docs.microsoft.com/en-us/azure/storage/files/storage-files-identity-ad-ds-assign-permissions"
+                    Write-Error -Message $message -ErrorAction Stop
+                }
+
+                Write-Host "------------------------------------------"
+                Write-Host "User '$($user.UserPrincipalName)' is granted following SMB share-level permissions:"
+
+                foreach ($roleDefinitionId in $roleDefinitions.Keys) {
+                    Write-Host "Assigned role definition '$($roleDefinitions[$roleDefinitionId].Name)':"
+                    $roleDefinitions[$roleDefinitionId]
+                    Write-Host "AD objects being assigned with role definition '$($roleDefinitions[$roleDefinitionId].Name)':"
+                    $assignedAdObjects[$roleDefinitionId] | Format-Table
+                    Write-Host ""
+                }
+
+                Write-Host "------------------------------------------"
+
+                $checks["CheckUserRbacAssignment"].Result = "Passed"
+                Write-Verbose "CheckUserRbacAssignment - SUCCESS"
+            } catch {
+                $checks["CheckUserRbacAssignment"].Result = "Failed"
+                $checks["CheckUserRbacAssignment"].Issue = $_
+                Write-Error "CheckUserRbacAssignment - FAILED"
+                Write-Error $_
+            }
+        }
+
+        if (!$filterIsPresent -or $Filter -match "CheckUserFileAccess")
+        {
+            try {
+                $checksExecuted += 1;
+                Write-Verbose "CheckUserFileAccess - START"
+
+                if ([string]::IsNullOrEmpty($FilePath)) {
+                    Write-Verbose -Message "Missing required parameter FilePath for CheckUserFileAccess, skipping CheckUserFileAccess"
+                    $checks["CheckUserFileAccess"].Result = "Skipped"
+                } else {
+                    $fileAcl = Get-Acl -Path $FilePath
+                    if ($null -eq $fileAcl) {
+                        $message = "Unable to get the ACL of '$FilePath'. Please check if the provided file path is correct."
+                        Write-Error -Message $message -ErrorAction Stop
+                    }
+
+                    # Get the access rules explicitly assigned to and inherited by the file
+                    $fileAccessRules = $fileAcl.GetAccessRules($true, $true, [System.Security.Principal.SecurityIdentifier])
+                    if ($fileAccessRules.Count -eq 0) {
+                        $message = "There is no access rule granted to '$FilePath'. Please consider setting up proper access rules" `
+                            + " for the file (for example, using https://docs.microsoft.com/en-us/windows-server/administration/windows-commands/icacls)"
+                        Write-Error -Message $message -ErrorAction Stop
+                    }
+                
+                    $user = Get-OnPremAdUser -Identity $UserName -Domain $Domain -ErrorAction Stop
+                    Write-Verbose -Message "Found user '$($user.UserPrincipalName)' with SID '$($user.SID)'"
+
+                    $identity = [System.Security.Principal.WindowsIdentity]::new($user.UserPrincipalName)
+
+                    $sidRules = @{}
+                    foreach ($accessRule in $fileAccessRules) {
+                        if ($accessRule.IdentityReference -ieq $user.SID) {
+                            if (-not $sidRules.ContainsKey($accessRule.IdentityReference)) {
+                                $sidRules[$accessRule.IdentityReference] = @()
+                            }
+
+                            $sidRules[$accessRule.IdentityReference] += $accessRule
+                        } else {
+                            foreach ($group in $identity.Groups) {
+                                if ($accessRule.IdentityReference -ieq $group.Value) {
+                                    if (-not $sidRules.ContainsKey($accessRule.IdentityReference)) {
+                                        $sidRules[$accessRule.IdentityReference] = @()
+                                    }
+        
+                                    $sidRules[$accessRule.IdentityReference] += $accessRule                
+                                }
+                            }
+                        }                        
+                    }
+
+                    if ($sidRules.Count -eq 0) {
+                        $message = "User '$($user.UserPrincipalName)' is not assigned any permission to '$FilePath'." `
+                            + " Please configure proper permission for the user to access the file (for example," `
+                            + " using https://docs.microsoft.com/en-us/windows-server/administration/windows-commands/icacls)"
+                        Write-Error -Message $message -ErrorAction Stop
+                    }
+    
+                    Write-Host "------------------------------------------"
+                    Write-Host "User '$($user.UserPrincipalName)' is granted following permissions to '$FilePath':"
+                    foreach ($sid in $sidRules.Keys) {
+                        Write-Host "Granted access through SID $($sid):"
+                        $sidRules[$sid]
+                    }
+
+                    Write-Host "------------------------------------------"
+
+                    $checks["CheckUserFileAccess"].Result = "Passed"
+                    Write-Verbose "CheckUserFileAccess - SUCCESS"
+                }
+
+            } catch {
+                $checks["CheckUserFileAccess"].Result = "Failed"
+                $checks["CheckUserFileAccess"].Issue = $_
+                Write-Error "CheckUserFileAccess - FAILED"
                 Write-Error $_
             }
         }
 
         if ($filterIsPresent -and $checksExecuted -eq 0)
         {
-            Write-Error "Filter '$Filter' provided does not match any options.  No checks were executed. Available filters are {$($checks.Keys -join ', ')}" -ErrorAction Stop
+            $message = "Filter '$Filter' provided does not match any options. No checks were executed." `
+                + " Available filters are {$($checks.Keys -join ', ')}"
+            Write-Error -Message $message -ErrorAction Stop
         }
         else
         {
-            Write-Verbose "Summary of checks:"
-            foreach ($k in $checks.GetEnumerator()) {
-                $resultString = "{0,-40}`t{1,10}" -f $($k.Name),$($k.Value)
-                switch ($($k.Value)) {
-                    "Passed" {
-                        Write-Host -ForegroundColor Green $resultString
-                    }
-                    "Failed" {
-                        Write-Host -ForegroundColor Red $resultString
-                    }
-                    default {
-                        Write-Host $resultString
-                    }
-                }
+            Write-Host "Summary of checks:"
+            $checks.Values | Format-Table -Property Name,Result
+            
+            $issues = $checks.Values | Where-Object { $_.Result -ieq "Failed" }
+
+            if ($issues.Length -gt 0) {
+                Write-Host "Issues found:"
+                $issues | ForEach-Object { Write-Host -ForegroundColor Red "---- $($_.Name) ----`n$($_.Issue)" }
             }
         }
     }
@@ -3353,7 +3842,10 @@ function Test-AzStorageAccountADObjectPasswordIsKerbKey {
          [string]$StorageAccountName,
 
          [Parameter(Mandatory=$true, Position=0, ValueFromPipeline=$true, ParameterSetName="StorageAccount")]
-         [Microsoft.Azure.Commands.Management.Storage.Models.PSStorageAccount]$StorageAccount
+         [Microsoft.Azure.Commands.Management.Storage.Models.PSStorageAccount]$StorageAccount,
+
+         [Parameter(Mandatory=$false)]
+         [switch]$ErrorIfNoMatch = $false
     )
 
     begin {
@@ -3364,13 +3856,10 @@ function Test-AzStorageAccountADObjectPasswordIsKerbKey {
 
     process
     {
-        $getObjParams = @{}
         switch ($PSCmdlet.ParameterSetName) {
             "StorageAccountName" {
-                $StorageAccount = Get-AzStorageAccount `
-                        -ResourceGroupName $ResourceGroupName `
-                        -Name $StorageAccountName `
-                        -ErrorAction Stop
+                $StorageAccount = Validate-StorageAccount -ResourceGroupName $ResourceGroupName `
+                    -StorageAccountName $StorageAccountName -ErrorAction Stop
             }
 
             "StorageAccount" {                
@@ -3383,22 +3872,24 @@ function Test-AzStorageAccountADObjectPasswordIsKerbKey {
             }
         }
 
-        $kerbKeys = $StorageAccount | `
-            Get-AzStorageAccountKey -ListKerbKey | `
-            Where-Object { $_.KeyName -like "kerb*" }
+        $kerbKeys = Get-AzStorageAccountKerbKeys -ResourceGroupName $ResourceGroupName `
+            -StorageAccountName $StorageAccountName -ErrorAction Stop
 
-        $adObj = $StorageAccount | Get-AzStorageAccountADObject 
+        $adObj = Get-AzStorageAccountADObject -StorageAccount $StorageAccount -ErrorAction Stop
 
-        $domainDns = $StorageAccount.AzureFilesIdentityBasedAuth.ActiveDirectoryProperties.DomainName
+        $activeDirectoryProperties = Get-AzStorageAccountActiveDirectoryProperties `
+            -StorageAccount $StorageAccount -ErrorAction Stop
+
+        $domainDns = $activeDirectoryProperties.DomainName
         $domain = Get-ADDomain -Server $domainDns
 
-        $userName = $domain.Name + "\" + $adObj.Name
+        $userName = $domain.NetBIOSName + "\" + $adObj.Name
 
         $oneKeyMatches = $false
         $keyMatches = [KerbKeyMatch[]]@()
         foreach ($key in $kerbKeys) {
             if ($null -ne (New-Object Directoryservices.DirectoryEntry "", $userName, $key.Value).PsBase.Name) {
-                Write-Verbose "Found that $($key.KeyName) matches password for $StorageAccount in AD."
+                Write-Verbose "Found that $($key.KeyName) matches password for $StorageAccountName in AD."
                 $oneKeyMatches = $true
                 $keyMatches += [KerbKeyMatch]::new(
                     $ResourceGroupName, 
@@ -3415,10 +3906,17 @@ function Test-AzStorageAccountADObjectPasswordIsKerbKey {
         }
 
         if (!$oneKeyMatches) {
-            Write-Warning `
-                    -Message ("Password for $userName does not match kerb1 or kerb2 of storage account: $StorageAccountName." + `
-                    "Please run the following command to resync the AD password with the kerb key of the storage account and " +  `
-                    "retry: Update-AzStorageAccountADObjectPassword.")
+            $message = "Password for $userName does not match kerb1 or kerb2 of" `
+                + " storage account: $StorageAccountName. Please run the following command to" `
+                + " resync the AD password with the kerb key of the storage account and retry:" `
+                + " Update-AzStorageAccountADObjectPassword." `
+                + " (https://docs.microsoft.com/en-us/azure/storage/files/storage-files-identity-ad-ds-update-password)"
+            
+            if ($ErrorIfNoMatch) {
+                Write-Error -Message $message -ErrorAction Stop
+            } else {
+                Write-Warning -Message $message
+            }
         }
 
         return $keyMatches
@@ -3548,10 +4046,9 @@ function Update-AzStorageAccountADObjectPassword {
                     -ErrorAction Stop | `
                 Select-Object -ExpandProperty Keys
             } else {
-                $kerbKeys = Get-AzStorageAccountKey `
+                $kerbKeys = Get-AzStorageAccountKerbKeys `
                     -ResourceGroupName $StorageAccount.ResourceGroupName `
-                    -Name $StorageAccount.StorageAccountName `
-                    -ListKerbKey `
+                    -StorageAccountName $StorageAccount.StorageAccountName `
                     -ErrorAction Stop
             }             
         
@@ -3710,6 +4207,95 @@ function Invoke-AzStorageAccountADObjectPasswordRotation {
     }
 }
 
+function Update-AzStorageAccountAuthForAES256 {
+    <#
+    .SYNOPSIS 
+    Update a storage account to support AES256 encryption.
+    .DESCRIPTION
+    This cmdlet will check and rejoin the storage account to an Active Directory domain with AES256 support.
+    .PARAMETER ResourceGroupName
+    The name of the resource group containing the storage account you would like to update. If StorageAccount is specified, 
+    this parameter should not specified.
+    .PARAMETER StorageAccountName
+    The name of the storage account you would like to update. If StorageAccount is specified, this parameter 
+    should not be specified.
+    .PARAMETER StorageAccount
+    A storage account object you would like to update. If StorageAccountName and ResourceGroupName is specified, this 
+    parameter should not specified.
+    .EXAMPLE
+    PS> Update-AzStorageAccountAuthForAES256 -ResourceGroupName "myResourceGroup" -StorageAccountName "myStorageAccount"
+    .EXAMPLE 
+    PS> $storageAccount = Get-AzStorageAccount -ResourceGroupName "myResourceGroup" -Name "myStorageAccount"
+    PS> Update-AzStorageAccountAuthForAES256 -StorageAccount $storageAccount
+    .EXAMPLE
+    PS> Get-AzStorageAccount -ResourceGroupName "myResourceGroup" | Update-AzStorageAccountAuthForAES256
+    In this example, note that a specific storage account has not been specified to 
+    Get-AzStorageAccount. This means Get-AzStorageAccount will pipe every storage account 
+    in the resource group myResourceGroup to Update-AzStorageAccountAuthForAES256.
+    #>
+
+    [CmdletBinding(SupportsShouldProcess, ConfirmImpact="Medium")]
+    param(
+        [Parameter(Mandatory=$true, Position=0, ParameterSetName="StorageAccountName")]
+        [string]$ResourceGroupName,
+
+        [Parameter(Mandatory=$true, Position=1, ParameterSetName="StorageAccountName")]
+        [Alias('Name')]
+        [string]$StorageAccountName,
+
+        [Parameter(Mandatory=$true, Position=0, ValueFromPipeline=$true, ParameterSetName="StorageAccount")]
+        [Microsoft.Azure.Commands.Management.Storage.Models.PSStorageAccount]$StorageAccount
+    ) 
+
+    begin {
+        Assert-IsWindows
+        Assert-IsDomainJoined
+    }
+
+    process {
+        if ($PSCmdlet.ParameterSetName -eq "StorageAccount") {
+            $StorageAccountName = $StorageAccount.StorageAccountName
+            $ResourceGroupName = $StorageAccount.ResourceGroupName
+        }
+
+        $adObject = Get-AzStorageAccountADObject -ResourceGroupName $ResourceGroupName `
+            -StorageAccountName $StorageAccountName -ErrorAction Stop
+
+        $activeDirectoryProperties = Get-AzStorageAccountActiveDirectoryProperties `
+            -ResourceGroupName $ResourceGroupName -StorageAccountName $StorageAccountName -ErrorAction Stop
+        $domain = $activeDirectoryProperties.DomainName
+
+        if (($adObject.ObjectClass -ine "computer") -or ($adObject.SamAccountName.TrimEnd("$") -ine $StorageAccountName)) {
+            $message = "Removing object '$($adObject.DistinguishedName)' of type '$adObject.ObjectClass' from domain '$domain'." `
+                + " AES256 is only supported for computer objects."
+            Write-Verbose -Message $message
+
+            Remove-ADObject -Identity $adObject.DistinguishedName -Server $domain -Confirm:$false -ErrorAction Stop
+
+            $organizationalUnitDistinguishedName = $adObject.DistinguishedName.Substring($adObject.DistinguishedName.IndexOf(',') + 1)
+
+            $message = "Join storage account '$StorageAccountName' to domain '$domain'" `
+                + " as a computer object under '$organizationalUnitDistinguishedName'"
+            Write-Verbose -Message $message
+
+            Join-AzStorageAccount -ResourceGroupName $ResourceGroupName -StorageAccountName $StorageAccountName `
+                -Domain $domain -DomainAccountType "ComputerAccount" `
+                -OrganizationalUnitDistinguishedName $organizationalUnitDistinguishedName `
+                -ADObjectNameOverride $StorageAccountName -ErrorAction Stop
+            
+            $adObject = Get-AzStorageAccountADObject -ResourceGroupName $ResourceGroupName `
+                -StorageAccountName $StorageAccountName -ErrorAction Stop
+        }
+        
+        Write-Verbose -Message "Set AD object '$($adObject.DistinguishedName)' to use AES256 for Kerberos authentication"
+        Set-ADComputer -Identity $adObject.DistinguishedName -Server $domain `
+            -KerberosEncryptionType "AES256" -ErrorAction Stop
+
+        Update-AzStorageAccountADObjectPassword -ResourceGroupname $ResourceGroupName -StorageAccountName $StorageAccountName `
+            -RotateToKerbKey kerb2 -ErrorAction Stop
+    }
+}
+
 function Join-AzStorageAccount {
     <#
     .SYNOPSIS 
@@ -3743,6 +4329,8 @@ function Join-AzStorageAccount {
     .PARAMETER OverwriteExistingADObject
     The switch to indicate whether to overwrite the existing AD object for the storage account. Default is $false and the script
     will stop if find an existing AD object for the storage account.
+    .PARAMETER EncryptionType
+    The type of encryption algorithm for the Kerberos ticket. Default is "'RC4','AES256'" which supports both 'RC4' and 'AES256' encryptions.
     .EXAMPLE
     PS> Join-AzStorageAccount -ResourceGroupName "myResourceGroup" -StorageAccountName "myStorageAccount" -Domain "subsidiary.corp.contoso.com" -DomainAccountType ComputerAccount -OrganizationalUnitName "StorageAccountsOU"
     .EXAMPLE 
@@ -3786,7 +4374,10 @@ function Join-AzStorageAccount {
         [string]$ADObjectNameOverride,
 
         [Parameter(Mandatory=$false, Position=6)]
-        [switch]$OverwriteExistingADObject
+        [switch]$OverwriteExistingADObject,
+
+        [Parameter(Mandatory=$false, Position=7)]
+        [System.Collections.Generic.HashSet[string]]$EncryptionType = @("RC4","AES256")
     ) 
 
     begin {
@@ -3806,16 +4397,39 @@ function Join-AzStorageAccount {
                     -ErrorAction Stop
         }
 
+        if (($DomainAccountType -ieq "ServiceLogonAccount") -and ($EncryptionType -contains "AES256")) {
+            $message = "Parameter -DomainAccountType is 'ServiceLogonAccount'," `
+                + " which will not be supported AES256 encryption for Kerberos tickets."
+            Write-Warning -Message $message
+        }
+
         if ($PSCmdlet.ParameterSetName -eq "StorageAccount") {
             $StorageAccountName = $StorageAccount.StorageAccountName
             $ResourceGroupName = $StorageAccount.ResourceGroupName
         }
         
+        if ($EncryptionType -contains "AES256") {
+            if ($PSBoundParameters.ContainsKey("ADObjectNameOverride") -and ($ADObjectNameOverride -ine $StorageAccountName)) {
+                $message = "Parameter -ADObjectNameOverride '$ADObjectNameOverride' is different from storage account" `
+                    + " name '$StorageAccountName'. It cannot be used as the SamAccountName to create an Active Directory object" `
+                    + " for the storage account. Azure Files will be supporting AES256 encryption for Kerberos tickets," `
+                    + " which requires that the SamAccountName match the storage account name."
+                Write-Error -Message $message -ErrorAction Stop
+            }
+            if ($StorageAccountName.Length -gt 15) {
+                $message = "Parameter -StorageAccountName '$StorageAccountName' has more than 15 characters," `
+                    + " which is not supported to be used as the SamAccountName to create an Active Directory object" `
+                    + " for the storage account. Azure Files will be supporting AES256 encryption for Kerberos tickets," `
+                    + " which requires that the SamAccountName match the storage account name. Please consider using" `
+                    + " a storage account with a shorter name."
+                Write-Error -Message $message -ErrorAction Stop
+            }
+        }
+
         if (!$PSBoundParameters.ContainsKey("ADObjectNameOverride")) {
             if ($StorageAccountName.Length -gt 15) {
                 $randomSuffix = Get-RandomString -StringLength 5 -AlphanumericOnly
                 $ADObjectNameOverride = $StorageAccountName.Substring(0, 10) + $randomSuffix
-
             } else {
                 $ADObjectNameOverride = $StorageAccountName
             }
@@ -3830,8 +4444,8 @@ function Join-AzStorageAccount {
             # Ensure the storage account exists.
             if ($PSCmdlet.ParameterSetName -eq "StorageAccountName") {
                 $StorageAccount = Validate-StorageAccount `
-                    -ResourceGroup $ResourceGroupName `
-                    -Name $StorageAccountName `
+                    -ResourceGroupName $ResourceGroupName `
+                    -StorageAccountName $StorageAccountName `
                     -ErrorAction Stop
             }
 
@@ -4993,7 +5607,7 @@ function Confirm-AzDnsForwarderPreReqs {
     # Check computer names
     # not sure that the actual boundary conditions (greater than 999) being tested.
     $filterCriteria = ($DnsForwarderRootName + "-*")
-    $incrementorSeed = Get-ADComputerInternal -Filter { Name -like $filterCriteria } | 
+    $incrementorSeed = Get-ADComputerInternal -Filter "Name -like '$filterCriteria'" | 
         Select-Object Name, 
             @{ 
                 Name = "Incrementor"; 
@@ -5459,6 +6073,293 @@ function New-AzDnsForwarder {
 #region DFS-N cmdlets
 #endregion
 
+#region Share level permissions migration cmdlets
+function Move-OnPremSharePermissionsToAzureFileShare
+{
+    <#
+    .SYNOPSIS
+    Maps local share permissions to Azure RBAC's built-in roles for files. Applies corresponding built-in roles to domain user's identity in Azure AD.
+    .DESCRIPTION
+    On-prem share permissions applied on domain users will be mapped to Azure RBAC's built-in roles. And these built-in roles will be assigned to domain user's identity in Azure AD.
+    .OUTPUTS
+    Boolean, If $CommitChanges is False, this functions checks if share permissions can be migrated to cloud without any failures. Returns True if migration is possible without errors.
+    If $CommitChanges is True, this function migrates on-prem share permissions to azure file share RBAC permissions. If there any errors are encountered particualr share permission migration is skipped and next permission in the list in processed.
+    .EXAMPLE
+    PS C:\> Move-OnPremSharePermissionsToAzureFileShare -LocalSharename "<localsharename>" -Destinationshare "<destinationshharename>" -ResourceGroupName "<resourceGroupName>" -StorageAccountName "<storageAccountName>" -CommitChanges $False -StopOnAADUserLookupFailure $True -AutoFitSharePermissionsOnAAD $True
+    #>
+
+    Param(
+         [Parameter(Mandatory=$true, Position=0, HelpMessage="Name of the share present on-prem.")]
+         [string]$LocalShareName,
+
+         [Parameter(Mandatory=$true, Position=1, HelpMessage="Name of the share on Azure storage account.")]
+         [string]$DestinationShareName,
+
+         [Parameter(Mandatory=$true, Position=2, HelpMessage="Resource group name of storage account.")]
+         [string]$ResourceGroupName,
+
+         [Parameter(Mandatory=$true, Position=3, HelpMessage="Storage account name on Azure.")]
+         [string]$StorageAccountName,
+
+         [Parameter(Mandatory=$true, Position=4, HelpMessage="If false, the tool just checks for possible errors and reports back without making any changes on the cloud.")]
+         [bool]$CommitChanges,
+
+         [Parameter(Mandatory=$false, Position=5, HelpMessage="If true, ACL migration will be stopped upon failure to lookup local user on Azure AD.")]
+         [bool]$StopOnAADUserLookupFailure = $true,
+
+         [Parameter(Mandatory=$false, Position=6, HelpMessage="If true, permissions will be mapped to closest available on built-in roles in Azure RBAC.")]
+         [bool]$AutoFitSharePermissionsOnAAD = $true
+        )
+
+    # Certain accounts in a domain server will not be represented in Azure AD.
+    [String[]]$wellKnowAccountName = 'Everyone', 'BUILTIN\Administrators', 'Domain', 'Authenticated Users', 'Users', 'SYSTEM', 'Domain Admins', 'Domain Users'
+    $wellKnownAccountNamesSet = [System.Collections.Generic.HashSet[String]]::new([System.Collections.Generic.IEnumerable[String]]$wellKnowAccountName)
+
+    $roleAssignmentsDoneList = New-Object System.Collections.Generic.List[Microsoft.Azure.Commands.Resources.Models.Authorization.PSRoleAssignment]
+    $roleAssignmentsSkippedAccountsForMissingRoles = New-Object System.Collections.Generic.List[CimInstance]
+    $roleAssignmentsSkippedAccountsForMissingIdentity = New-Object System.Collections.Generic.List[CimInstance]
+    $roleAssignmentsSkippedAccountsForHavingRoleAlready = New-Object System.Collections.Generic.List[CimInstance]
+    $roleAssignmentsDoneAccounts = New-Object System.Collections.Generic.List[CimInstance]
+    $roleAssignmentsPossibleWithoutAnySkips = $True
+
+    # Verify the Storage account and file share exist on the cloud.
+    try
+    {
+        $StorageAccountObj = Get-AzStorageAccount -ResourceGroupName $ResourceGroupName -Name $StorageAccountName -ErrorAction Stop
+    }
+    catch
+    {
+        Write-Error -Message "Caught exception: $_" -ErrorAction Stop
+    }
+
+    if($StorageAccountObj -eq $null)
+    {
+        throw "The Storage Account doesn't exist. To create the Storage account and connect it to an active directory, 
+                                    please follow the link https://docs.microsoft.com/en-us/azure/storage/files/storage-files-identity-auth-active-directory-enable"
+    }
+
+    if($StorageAccountObj.AzureFilesIdentityBasedAuth.DirectoryServiceOptions -ne 'AD')
+    {
+        throw "To Proceed, you need to have Storage Account connected to an Active Directory.
+                                        Refer the link for details - https://docs.microsoft.com/en-us/azure/storage/files/storage-files-identity-auth-active-directory-enable"
+    }
+
+    try
+    {
+        $accountKey = Get-AzStorageAccountKey -ResourceGroupName $ResourceGroupName -Name $StorageAccountName | Where-Object {$_.KeyName -like "key1"}
+        $storageAccountContext = New-AzStorageContext -StorageAccountName $StorageAccountName -StorageAccountKey $accountKey.Value
+    }
+    catch
+    {
+        Write-Error "Caught exception: $_" -ErrorAction Stop
+    }
+
+    Write-Verbose -Message "Checking if the destination share exists"
+
+    $cloudShare = Get-AzStorageShare -Context $storageAccountContext -Name $DestinationShareName -Erroraction 'silentlycontinue'
+
+    # If the destination share does not exist, the following will create a new share.
+    if($cloudShare -eq $null)
+    {
+        Write-Verbose -Message  "The Destination Share doesn't exist. Creating a new share with the name provided"
+        try
+        {
+            $cloudShare = New-AzStorageShare -Name $DestinationShareName -Context $storageAccountContext
+        }
+        catch
+        {
+            Write-Error "Caught exception: $_" -ErrorAction Stop
+        }
+    }
+
+    Write-Verbose -Message "Getting the local SMB share access details"
+    $localSmbShareAccess = Get-SmbShareAccess -Name $LocalShareName
+
+    if ($localSmbShareAccess -eq $null)
+    {
+        throw "Could not find share with name $LocalShareName."
+    }
+
+    Write-Host "Local SMB share access details"
+
+    $localSmbShareAccess | Format-Table | Out-String|% {Write-Host $_}
+
+    # Run through ACL of the local share.
+    foreach($smbShareAccessControl in $localSmbShareAccess)
+    {
+        $account=$smbShareAccessControl.AccountName
+        $strAccessRight =[string] $smbShareAccessControl.AccessRight
+        $strAccessControlType = [string] $smbShareAccessControl.AccessControlType
+        
+        if($wellKnownAccountNamesSet.Contains($account))
+        {
+            $roleAssignmentsSkippedAccountsForMissingIdentity.Add($smbShareAccessControl)
+            continue
+        }
+
+        $objUser = New-Object System.Security.Principal.NTAccount($account)
+        $strSID = $objUser.Translate([System.Security.Principal.SecurityIdentifier])
+
+        Write-Verbose -Message "Mapping domain user/group - $account to its corresponding identity on Azure AAD"
+
+        #Geting the OID of domain user/group using its SID
+        try
+        {
+            $aadUser = Get-AzureADUser -Filter "OnPremisesSecurityIdentifier eq '$strSID'"
+        }
+        catch
+        {
+            Write-Error "Caught exception: $_" -ErrorAction Stop
+        }
+
+        if ($aadUser -ne $null)
+        {
+            Write-Verbose -Message "Domain user/group's identity retreived from AAD - $($aadUser.UserPrincipalName)"
+
+            #Assign Rbac for OID extracted from above.
+            $roleDefinition = $null
+
+            If($strAccessControlType.Contains("Allow"))
+            {
+                if($strAccessRight.Contains("Read"))
+                {
+                    # Storage File Data SMB Share Reader - Built in role definition has below Id.
+                    $roleDefinition = Get-AzRoleDefinition -Id aba4ae5f-2193-4029-9191-0cb91df5e314
+                }
+                elseif($strAccessRight.Contains("Change"))
+                {
+                    # Storage File Data SMB Share Elevated Contributor - Built in role has below Id.
+                    $roleDefinition = Get-AzRoleDefinition -Id a7264617-510b-434b-a828-9731dc254ea7
+                }
+                elseif($strAccessRight.Contains("Full") -And $AutoFitSharePermissionsOnAAD -eq $true)
+                {
+                    # Storage File Data SMB Share Elevated Contributor - Built in role has below Id.
+                    $roleDefinition = Get-AzRoleDefinition -Id a7264617-510b-434b-a828-9731dc254ea7
+                }
+            }
+            else
+            {
+                # On deny, User should create custom role definitions.
+                $roleAssignmentsSkippedAccountsForMissingRoles.Add($smbShareAccessControl)
+            }
+
+            if ($roleDefinition -ne $null -And $CommitChanges -eq $true)
+            {
+                Write-Verbose -Message "Assigning corresponding RBAC role to the user/group with scope set to the destination share."
+
+                #Constrain the scope to the target file share
+                $storageAccountPath = $StorageAccountObj.Id
+                $scope = "$storageAccountPath/fileServices/default/fileshares/$DestinationShareName"
+
+                $roleAssignments = Get-AzRoleAssignment -Scope $scope -ObjectId $aadUser.ObjectId
+
+                #Check to see if the role is already assigned to the user/group.
+                $isRoleAssignedAlready = $False;
+
+                if($roleAssignments -ne $null )
+                {
+                    foreach($roleAssignment in $roleAssignments)
+                    {
+                        if($roleAssignment.RoleDefinitionName -eq $roleDefinition.Name)
+                        {
+                            Write-Verbose -Message "Role assignment present already, skipping"
+                            $isRoleAssignedAlready = $True
+                            $roleAssignmentsSkippedAccountsForHavingRoleAlready.Add($smbShareAccessControl)
+                            break;
+                        }
+                    }
+                }
+
+                if ($isRoleAssignedAlready -eq $False)
+                {
+                    Write-Verbose -Message "Assigning RBAC role to the user/group : $account  with the role : $($roleDefinition.Name)"
+                    #Assign the custom role to the target identity with the specified scope.
+                    $newRoleAssignment = New-AzRoleAssignment -ObjectId $aadUser.ObjectId -RoleDefinitionId $roleDefinition.Id -Scope $scope
+
+                    $roleAssignmentsDoneAccounts.Add($smbShareAccessControl)
+                    $roleAssignmentsDoneList.Add($newRoleAssignment)
+                }
+            }
+        }
+        else
+        {
+            $roleAssignmentsSkippedAccountsForMissingIdentity.Add($smbShareAccessControl)
+            If ($CommitChanges -eq $true)
+            {
+                If ($StopOnAADUserLookupFailure)
+                {
+                    Write-Error -Message "Could not find an identity on AAD for domain user - '$account'. Please confirm AD connect is complete." -ErrorAction stop
+                }
+                else
+                {
+                    Write-Error -Message "Could not find an identity on AAD for domain user - '$account', Continuing" -ErrorAction Continue
+                }
+            }
+        }
+    }
+
+    If ($CommitChanges -eq $false)
+    {
+        If ($roleAssignmentsSkippedAccountsForMissingIdentity.Count -ne 0)
+        {
+            Write-Host "Following Accounts do not have corresponding identities in Azure AD. If you continue, these account's access control will be skipped"
+
+            $roleAssignmentsPossibleWithoutAnySkips = $False
+            $roleAssignmentsSkippedAccountsForMissingIdentity | Format-Table | Out-String|% {Write-Host $_}
+        }
+
+        If ($roleAssignmentsSkippedAccountsForMissingRoles.Count -ne 0)
+        {
+            Write-Host "Following Accounts do not have corresponding access right/control in Azure AD. If you continue, these account's access control will be skipped"
+
+            $roleAssignmentsPossibleWithoutAnySkips = $False
+            $roleAssignmentsSkippedAccountsForMissingRoles | Format-Table | Out-String|% {Write-Host $_}
+        }
+    }
+    else
+    {
+        If ($roleAssignmentsSkippedAccountsForMissingIdentity.Count -ne 0)
+        {
+            Write-Host "Following Accounts do not have corresponding identities in Azure AD. Skipped ACL migration."
+
+            $roleAssignmentsSkippedAccountsForMissingIdentity | Format-Table | Out-String|% {Write-Host $_}
+        }
+
+        If ($roleAssignmentsSkippedAccountsForMissingRoles.Count -ne 0)
+        {
+            Write-Host "Following Accounts do not have corresponding access right/control in Azure AD. Skipped ACL migration."
+
+            $roleAssignmentsSkippedAccountsForMissingRoles | Format-Table | Out-String|% {Write-Host $_}
+        }
+
+        If ($roleAssignmentsSkippedAccountsForHavingRoleAlready.Count -ne 0)
+        {
+            Write-Host "Following Accounts already have access to the share at share scope or higher. Skipped ACL migration."
+
+            $roleAssignmentsSkippedAccountsForHavingRoleAlready | Format-Table | Out-String|% {Write-Host $_}
+        }
+
+        If ($roleAssignmentsDoneAccounts.Count -ne 0)
+        {
+            Write-Host "Below accounts were mapped to Azure AD roles"
+
+            $roleAssignmentsDoneAccounts | Format-Table | Out-String|% {Write-Host $_}
+        }
+
+        If ($roleAssignmentsDoneList.Count -ne 0)
+        {
+            Write-Host "`nSuccessful role assignments:"
+
+            foreach($roleAssignment in $roleAssignmentsDoneList)
+            {
+                $roleAssignment
+            }
+        }
+    }
+    return $roleAssignmentsPossibleWithoutAnySkips
+}
+#endregion
+
 #region Actions to run on module load
 $AzurePrivateDnsIp = [string]$null
 $DnsForwarderTemplateVersion = [Version]$null
@@ -5568,10 +6469,10 @@ if (!$SkipAzPowerShellCheck) {
 #endregion
 
 # SIG # Begin signature block
-# MIIjigYJKoZIhvcNAQcCoIIjezCCI3cCAQExDzANBglghkgBZQMEAgEFADB5Bgor
+# MIIjlgYJKoZIhvcNAQcCoIIjhzCCI4MCAQExDzANBglghkgBZQMEAgEFADB5Bgor
 # BgEEAYI3AgEEoGswaTA0BgorBgEEAYI3AgEeMCYCAwEAAAQQH8w7YFlLCE63JNLG
-# KX7zUQIBAAIBAAIBAAIBAAIBADAxMA0GCWCGSAFlAwQCAQUABCAyHr1JGxnCEydH
-# wUQHwk8ZLj7r/1vdt60bLakk18E3MKCCDYEwggX/MIID56ADAgECAhMzAAABh3IX
+# KX7zUQIBAAIBAAIBAAIBAAIBADAxMA0GCWCGSAFlAwQCAQUABCCu1PqP7eE0l1Y3
+# hv9O6VS+hXsSVMuMkxke8EJNScWvTqCCDYEwggX/MIID56ADAgECAhMzAAABh3IX
 # chVZQMcJAAAAAAGHMA0GCSqGSIb3DQEBCwUAMH4xCzAJBgNVBAYTAlVTMRMwEQYD
 # VQQIEwpXYXNoaW5ndG9uMRAwDgYDVQQHEwdSZWRtb25kMR4wHAYDVQQKExVNaWNy
 # b3NvZnQgQ29ycG9yYXRpb24xKDAmBgNVBAMTH01pY3Jvc29mdCBDb2RlIFNpZ25p
@@ -5643,119 +6544,119 @@ if (!$SkipAzPowerShellCheck) {
 # xw4o7t5lL+yX9qFcltgA1qFGvVnzl6UJS0gQmYAf0AApxbGbpT9Fdx41xtKiop96
 # eiL6SJUfq/tHI4D1nvi/a7dLl+LrdXga7Oo3mXkYS//WsyNodeav+vyL6wuA6mk7
 # r/ww7QRMjt/fdW1jkT3RnVZOT7+AVyKheBEyIXrvQQqxP/uozKRdwaGIm1dxVk5I
-# RcBCyZt2WwqASGv9eZ/BvW1taslScxMNelDNMYIVXzCCFVsCAQEwgZUwfjELMAkG
+# RcBCyZt2WwqASGv9eZ/BvW1taslScxMNelDNMYIVazCCFWcCAQEwgZUwfjELMAkG
 # A1UEBhMCVVMxEzARBgNVBAgTCldhc2hpbmd0b24xEDAOBgNVBAcTB1JlZG1vbmQx
 # HjAcBgNVBAoTFU1pY3Jvc29mdCBDb3Jwb3JhdGlvbjEoMCYGA1UEAxMfTWljcm9z
 # b2Z0IENvZGUgU2lnbmluZyBQQ0EgMjAxMQITMwAAAYdyF3IVWUDHCQAAAAABhzAN
 # BglghkgBZQMEAgEFAKCBsjAZBgkqhkiG9w0BCQMxDAYKKwYBBAGCNwIBBDAcBgor
-# BgEEAYI3AgELMQ4wDAYKKwYBBAGCNwIBFTAvBgkqhkiG9w0BCQQxIgQgKewOTvb/
-# oSqcjGMAilwnEgzuchERWAmTXAccuTSuRn4wRgYKKwYBBAGCNwIBDDE4MDagGoAY
+# BgEEAYI3AgELMQ4wDAYKKwYBBAGCNwIBFTAvBgkqhkiG9w0BCQQxIgQgj/W4N+LE
+# va4BSybKrgLbn3NBd11adhlBD3B20Sh2MUwwRgYKKwYBBAGCNwIBDDE4MDagGoAY
 # AEEAegBGAGkAbABlAEgAeQBiAHIAaQBkoRiAFmh0dHBzOi8vbWljcm9zb2Z0LmNv
-# bSAwDQYJKoZIhvcNAQEBBQAEggEAgkgk7Bpa9MH7p8nB8MBSbsZuEoaBIH6Hs35f
-# enZXbF8jos0NnoOeINz7aP1isGfNqs6+WVbmbThtn4QxUho5XsWHvkxp7rQuTPBy
-# /GKaCr8QG3y2T1cKCVE4bsMxmXNf//XcdYWPU90S80Q/KqUPyJ74LSxTyNDgXkqs
-# R98oemsAe0ryu0ydP4HUXEdguFGV9w/l1uvEzVksM2KHa3/FZMuVqWuPMCNV9E/7
-# Izo6YRJFunGTE/wCiWM4xxGLFTz77IOfliZGG5+6/5LPmsZN2BeKPBztSbZPFI3t
-# Hi22cyfqpAQVBtU1fHQZruBDpcbWDwCQGSfb4dhSngPomW3wTaGCEuUwghLhBgor
-# BgEEAYI3AwMBMYIS0TCCEs0GCSqGSIb3DQEHAqCCEr4wghK6AgEDMQ8wDQYJYIZI
-# AWUDBAIBBQAwggFRBgsqhkiG9w0BCRABBKCCAUAEggE8MIIBOAIBAQYKKwYBBAGE
-# WQoDATAxMA0GCWCGSAFlAwQCAQUABCD7nWSAXAIQJvSVUbr6N6CEkhkU0R8PIJMe
-# rXHOEujJgwIGXtfcpJuYGBMyMDIwMDYwODE5NTUwMS4zOTNaMASAAgH0oIHQpIHN
-# MIHKMQswCQYDVQQGEwJVUzELMAkGA1UECBMCV0ExEDAOBgNVBAcTB1JlZG1vbmQx
-# HjAcBgNVBAoTFU1pY3Jvc29mdCBDb3Jwb3JhdGlvbjEtMCsGA1UECxMkTWljcm9z
-# b2Z0IElyZWxhbmQgT3BlcmF0aW9ucyBMaW1pdGVkMSYwJAYDVQQLEx1UaGFsZXMg
-# VFNTIEVTTjoyQUQ0LTRCOTItRkEwMTElMCMGA1UEAxMcTWljcm9zb2Z0IFRpbWUt
-# U3RhbXAgU2VydmljZaCCDjwwggTxMIID2aADAgECAhMzAAABCH3/RVlwRfqEAAAA
-# AAEIMA0GCSqGSIb3DQEBCwUAMHwxCzAJBgNVBAYTAlVTMRMwEQYDVQQIEwpXYXNo
-# aW5ndG9uMRAwDgYDVQQHEwdSZWRtb25kMR4wHAYDVQQKExVNaWNyb3NvZnQgQ29y
-# cG9yYXRpb24xJjAkBgNVBAMTHU1pY3Jvc29mdCBUaW1lLVN0YW1wIFBDQSAyMDEw
-# MB4XDTE5MTAyMzIzMTkxM1oXDTIxMDEyMTIzMTkxM1owgcoxCzAJBgNVBAYTAlVT
-# MQswCQYDVQQIEwJXQTEQMA4GA1UEBxMHUmVkbW9uZDEeMBwGA1UEChMVTWljcm9z
-# b2Z0IENvcnBvcmF0aW9uMS0wKwYDVQQLEyRNaWNyb3NvZnQgSXJlbGFuZCBPcGVy
-# YXRpb25zIExpbWl0ZWQxJjAkBgNVBAsTHVRoYWxlcyBUU1MgRVNOOjJBRDQtNEI5
-# Mi1GQTAxMSUwIwYDVQQDExxNaWNyb3NvZnQgVGltZS1TdGFtcCBTZXJ2aWNlMIIB
-# IjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAuROIy8hw8WZNOcBs4srKN7ek
-# TUS+v7xtbGXgtNSpeQZ2ljV31AMoa/Ark4cso8EO2H2ImfhfsxB4d8DNih5sD8pe
-# AjwlIGSyF5stNvsbrKvZjJod0eTecrqeja7w37T+B4ESzl0wMvC26z9QOe92tiYp
-# 6X2vFLDtohJhwU4rxaxR2DeFAHW6zCOpbPWcjB56YeqDMOUCUg34ffbuMhgzWBWu
-# TfPZBeJq3DBRd5bw5m/eYZ+AS4vplGv4Y+6JO4MrHCvhiOSd5/FzSwjSm7Mx8r7i
-# Kx31SZfpalvGkcnSX659T4uf5Yf+RnAaXqAUAI2Kzy8aHKU5X9VUtf/E6HBoCwID
-# AQABo4IBGzCCARcwHQYDVR0OBBYEFPOUYkkLlAiUdCq8kT3zFUPCvgBUMB8GA1Ud
-# IwQYMBaAFNVjOlyKMZDzQ3t8RhvFM2hahW1VMFYGA1UdHwRPME0wS6BJoEeGRWh0
-# dHA6Ly9jcmwubWljcm9zb2Z0LmNvbS9wa2kvY3JsL3Byb2R1Y3RzL01pY1RpbVN0
-# YVBDQV8yMDEwLTA3LTAxLmNybDBaBggrBgEFBQcBAQROMEwwSgYIKwYBBQUHMAKG
-# Pmh0dHA6Ly93d3cubWljcm9zb2Z0LmNvbS9wa2kvY2VydHMvTWljVGltU3RhUENB
-# XzIwMTAtMDctMDEuY3J0MAwGA1UdEwEB/wQCMAAwEwYDVR0lBAwwCgYIKwYBBQUH
-# AwgwDQYJKoZIhvcNAQELBQADggEBAHh5GS4XYaPiZtDNndp348E/wgQzvz7Utd3s
-# r5u9tieG6jdSpdus/k+uZcYT8QYrCZkiN/YrTOtRelPRXZnMTPY6MZXiB+0nk6WT
-# GTpvseJMhdhncsAC4Pd0WD3HWI//dfzBbHZPP2DyPHBVD8Dez9J7nIMt0r1Q+Otl
-# jDyO+k/Pm0DG/F7LohmDm2dMR9UqrCZ7SgNEjvIERLl4i5uwWbhhQh5+ZnBI8ueM
-# +I/qNvZ5NtbCj86oXUEwyGr/FmbSU11QpDDA32VaFEj+4WvMc1E3X0jFABJrIHOE
-# idpTdm41qNSkNXSxQfg+jwlqPst23KVZX6KLdO8aHgjQJOA63ZUwggZxMIIEWaAD
-# AgECAgphCYEqAAAAAAACMA0GCSqGSIb3DQEBCwUAMIGIMQswCQYDVQQGEwJVUzET
-# MBEGA1UECBMKV2FzaGluZ3RvbjEQMA4GA1UEBxMHUmVkbW9uZDEeMBwGA1UEChMV
-# TWljcm9zb2Z0IENvcnBvcmF0aW9uMTIwMAYDVQQDEylNaWNyb3NvZnQgUm9vdCBD
-# ZXJ0aWZpY2F0ZSBBdXRob3JpdHkgMjAxMDAeFw0xMDA3MDEyMTM2NTVaFw0yNTA3
-# MDEyMTQ2NTVaMHwxCzAJBgNVBAYTAlVTMRMwEQYDVQQIEwpXYXNoaW5ndG9uMRAw
-# DgYDVQQHEwdSZWRtb25kMR4wHAYDVQQKExVNaWNyb3NvZnQgQ29ycG9yYXRpb24x
-# JjAkBgNVBAMTHU1pY3Jvc29mdCBUaW1lLVN0YW1wIFBDQSAyMDEwMIIBIjANBgkq
-# hkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAqR0NvHcRijog7PwTl/X6f2mUa3RUENWl
-# CgCChfvtfGhLLF/Fw+Vhwna3PmYrW/AVUycEMR9BGxqVHc4JE458YTBZsTBED/Fg
-# iIRUQwzXTbg4CLNC3ZOs1nMwVyaCo0UN0Or1R4HNvyRgMlhgRvJYR4YyhB50YWeR
-# X4FUsc+TTJLBxKZd0WETbijGGvmGgLvfYfxGwScdJGcSchohiq9LZIlQYrFd/Xcf
-# PfBXday9ikJNQFHRD5wGPmd/9WbAA5ZEfu/QS/1u5ZrKsajyeioKMfDaTgaRtogI
-# Neh4HLDpmc085y9Euqf03GS9pAHBIAmTeM38vMDJRF1eFpwBBU8iTQIDAQABo4IB
-# 5jCCAeIwEAYJKwYBBAGCNxUBBAMCAQAwHQYDVR0OBBYEFNVjOlyKMZDzQ3t8RhvF
-# M2hahW1VMBkGCSsGAQQBgjcUAgQMHgoAUwB1AGIAQwBBMAsGA1UdDwQEAwIBhjAP
-# BgNVHRMBAf8EBTADAQH/MB8GA1UdIwQYMBaAFNX2VsuP6KJcYmjRPZSQW9fOmhjE
-# MFYGA1UdHwRPME0wS6BJoEeGRWh0dHA6Ly9jcmwubWljcm9zb2Z0LmNvbS9wa2kv
-# Y3JsL3Byb2R1Y3RzL01pY1Jvb0NlckF1dF8yMDEwLTA2LTIzLmNybDBaBggrBgEF
-# BQcBAQROMEwwSgYIKwYBBQUHMAKGPmh0dHA6Ly93d3cubWljcm9zb2Z0LmNvbS9w
-# a2kvY2VydHMvTWljUm9vQ2VyQXV0XzIwMTAtMDYtMjMuY3J0MIGgBgNVHSABAf8E
-# gZUwgZIwgY8GCSsGAQQBgjcuAzCBgTA9BggrBgEFBQcCARYxaHR0cDovL3d3dy5t
-# aWNyb3NvZnQuY29tL1BLSS9kb2NzL0NQUy9kZWZhdWx0Lmh0bTBABggrBgEFBQcC
-# AjA0HjIgHQBMAGUAZwBhAGwAXwBQAG8AbABpAGMAeQBfAFMAdABhAHQAZQBtAGUA
-# bgB0AC4gHTANBgkqhkiG9w0BAQsFAAOCAgEAB+aIUQ3ixuCYP4FxAz2do6Ehb7Pr
-# psz1Mb7PBeKp/vpXbRkws8LFZslq3/Xn8Hi9x6ieJeP5vO1rVFcIK1GCRBL7uVOM
-# zPRgEop2zEBAQZvcXBf/XPleFzWYJFZLdO9CEMivv3/Gf/I3fVo/HPKZeUqRUgCv
-# OA8X9S95gWXZqbVr5MfO9sp6AG9LMEQkIjzP7QOllo9ZKby2/QThcJ8ySif9Va8v
-# /rbljjO7Yl+a21dA6fHOmWaQjP9qYn/dxUoLkSbiOewZSnFjnXshbcOco6I8+n99
-# lmqQeKZt0uGc+R38ONiU9MalCpaGpL2eGq4EQoO4tYCbIjggtSXlZOz39L9+Y1kl
-# D3ouOVd2onGqBooPiRa6YacRy5rYDkeagMXQzafQ732D8OE7cQnfXXSYIghh2rBQ
-# Hm+98eEA3+cxB6STOvdlR3jo+KhIq/fecn5ha293qYHLpwmsObvsxsvYgrRyzR30
-# uIUBHoD7G4kqVDmyW9rIDVWZeodzOwjmmC3qjeAzLhIp9cAvVCch98isTtoouLGp
-# 25ayp0Kiyc8ZQU3ghvkqmqMRZjDTu3QyS99je/WZii8bxyGvWbWu3EQ8l1Bx16HS
-# xVXjad5XwdHeMMD9zOZN+w2/XU/pnR4ZOC+8z1gFLu8NoFA12u8JJxzVs341Hgi6
-# 2jbb01+P3nSISRKhggLOMIICNwIBATCB+KGB0KSBzTCByjELMAkGA1UEBhMCVVMx
-# CzAJBgNVBAgTAldBMRAwDgYDVQQHEwdSZWRtb25kMR4wHAYDVQQKExVNaWNyb3Nv
-# ZnQgQ29ycG9yYXRpb24xLTArBgNVBAsTJE1pY3Jvc29mdCBJcmVsYW5kIE9wZXJh
-# dGlvbnMgTGltaXRlZDEmMCQGA1UECxMdVGhhbGVzIFRTUyBFU046MkFENC00Qjky
-# LUZBMDExJTAjBgNVBAMTHE1pY3Jvc29mdCBUaW1lLVN0YW1wIFNlcnZpY2WiIwoB
-# ATAHBgUrDgMCGgMVAIji0Tf8xrnEpEOiC+DfwVPk9tAMoIGDMIGApH4wfDELMAkG
-# A1UEBhMCVVMxEzARBgNVBAgTCldhc2hpbmd0b24xEDAOBgNVBAcTB1JlZG1vbmQx
-# HjAcBgNVBAoTFU1pY3Jvc29mdCBDb3Jwb3JhdGlvbjEmMCQGA1UEAxMdTWljcm9z
-# b2Z0IFRpbWUtU3RhbXAgUENBIDIwMTAwDQYJKoZIhvcNAQEFBQACBQDiiPJ+MCIY
-# DzIwMjAwNjA5MDEyMzEwWhgPMjAyMDA2MTAwMTIzMTBaMHcwPQYKKwYBBAGEWQoE
-# ATEvMC0wCgIFAOKI8n4CAQAwCgIBAAICBlwCAf8wBwIBAAICEegwCgIFAOKKQ/4C
-# AQAwNgYKKwYBBAGEWQoEAjEoMCYwDAYKKwYBBAGEWQoDAqAKMAgCAQACAwehIKEK
-# MAgCAQACAwGGoDANBgkqhkiG9w0BAQUFAAOBgQApkDKrUi6OUAf90uVWPpHBRDgs
-# YBHNse+EKmO2c8j/7+n0TrAmRQU5GWCheop7jZ5Ei3PyChi7yIGGXig1t8GfGMeR
-# hOFkRHO8i0tbTEdAlS3x7khZGYjqas+nSB0B6AJ22vsbADQ7ascWcPeVAsOgFu/r
-# FOGZgYu6cNH+TFkU9zGCAw0wggMJAgEBMIGTMHwxCzAJBgNVBAYTAlVTMRMwEQYD
-# VQQIEwpXYXNoaW5ndG9uMRAwDgYDVQQHEwdSZWRtb25kMR4wHAYDVQQKExVNaWNy
-# b3NvZnQgQ29ycG9yYXRpb24xJjAkBgNVBAMTHU1pY3Jvc29mdCBUaW1lLVN0YW1w
-# IFBDQSAyMDEwAhMzAAABCH3/RVlwRfqEAAAAAAEIMA0GCWCGSAFlAwQCAQUAoIIB
-# SjAaBgkqhkiG9w0BCQMxDQYLKoZIhvcNAQkQAQQwLwYJKoZIhvcNAQkEMSIEIHjB
-# gkBNpSOlefkd/f5oKjne1K2mQvknXbTs7CymX5AZMIH6BgsqhkiG9w0BCRACLzGB
-# 6jCB5zCB5DCBvQQg4AM2TuBF3fVKohVRz9iIgstP7QwJMvQbrg4mqcVZg0cwgZgw
-# gYCkfjB8MQswCQYDVQQGEwJVUzETMBEGA1UECBMKV2FzaGluZ3RvbjEQMA4GA1UE
-# BxMHUmVkbW9uZDEeMBwGA1UEChMVTWljcm9zb2Z0IENvcnBvcmF0aW9uMSYwJAYD
-# VQQDEx1NaWNyb3NvZnQgVGltZS1TdGFtcCBQQ0EgMjAxMAITMwAAAQh9/0VZcEX6
-# hAAAAAABCDAiBCDqsJx83OLbXuabva7VFtWih2gJaI7OCGxX7FOc0aTEJTANBgkq
-# hkiG9w0BAQsFAASCAQAj6uDQDYAoJC/nnFMvVfuE3VCBheotO6xMvYdWJkmRkV2d
-# 5mBC5P5Ha/kyWsNQ4nGXVMD5QCmM64hDNplTXOJmZ/XMcx6/q//KlfPwdSUNzMZx
-# xLAub9GONfuABOb4iXzpVkSxXOSs4gEWIO5EcV1RV10MBZE0itvFV5f3leVIIq/t
-# XETgMUQZJ2tn8fHw4WKdDPwNzeoXFzyBPyHjxgJ9a0IFoOhOXsZF5rC4qotL46wS
-# /LeL6bsyzwtdvd9Bk85JKiA4H8DXskjfWM122drnNjDQ/c1uBs/NhloNVhAzwSmC
-# 0qh7UKJDYAm6MHm6yF538u5uEhB9Y3OVuwJEhqIs
+# bSAwDQYJKoZIhvcNAQEBBQAEggEANRemC0TpN2NtvqfPTsvZnSusUqXMowkni7ju
+# 1IZbmxtC3LsHbjvxXz9X97MWV3qDHWAh5u/Kofv/WjJztIn/KRotoOgTPsb2qTyR
+# YcMl2G8tZVFymXZyGWinIF2XWYScvBpPwf1T9g7nvkUhVTQ+1JZdjZKm9JewuVwq
+# wz0/3+xS2YoEppDCKHKAywBMcrWmTqauHYVT/r+1bQmI5ByiVe4CxU5Vt+D4S1Sr
+# 7F0YyItgYpHcv8zLz+xRHnzOZU3iJDfLtS9RzKB6bESOpLbIQvvJf8dtDJ38VD+p
+# QeCZY750CwefvdzZC2uxazBFkeBOVWbXErucxnF7a5fKdnLhTaGCEvEwghLtBgor
+# BgEEAYI3AwMBMYIS3TCCEtkGCSqGSIb3DQEHAqCCEsowghLGAgEDMQ8wDQYJYIZI
+# AWUDBAIBBQAwggFVBgsqhkiG9w0BCRABBKCCAUQEggFAMIIBPAIBAQYKKwYBBAGE
+# WQoDATAxMA0GCWCGSAFlAwQCAQUABCB77uVLjXs9wl0WzpUKPLxbmR6NJDLGseu+
+# ZHYpv+JmFQIGX4hEDSirGBMyMDIwMTExMzE3NDg0Mi41NDRaMASAAgH0oIHUpIHR
+# MIHOMQswCQYDVQQGEwJVUzETMBEGA1UECBMKV2FzaGluZ3RvbjEQMA4GA1UEBxMH
+# UmVkbW9uZDEeMBwGA1UEChMVTWljcm9zb2Z0IENvcnBvcmF0aW9uMSkwJwYDVQQL
+# EyBNaWNyb3NvZnQgT3BlcmF0aW9ucyBQdWVydG8gUmljbzEmMCQGA1UECxMdVGhh
+# bGVzIFRTUyBFU046QzRCRC1FMzdGLTVGRkMxJTAjBgNVBAMTHE1pY3Jvc29mdCBU
+# aW1lLVN0YW1wIFNlcnZpY2Wggg5EMIIE9TCCA92gAwIBAgITMwAAASM4sOSt2FqQ
+# nQAAAAABIzANBgkqhkiG9w0BAQsFADB8MQswCQYDVQQGEwJVUzETMBEGA1UECBMK
+# V2FzaGluZ3RvbjEQMA4GA1UEBxMHUmVkbW9uZDEeMBwGA1UEChMVTWljcm9zb2Z0
+# IENvcnBvcmF0aW9uMSYwJAYDVQQDEx1NaWNyb3NvZnQgVGltZS1TdGFtcCBQQ0Eg
+# MjAxMDAeFw0xOTEyMTkwMTE0NTZaFw0yMTAzMTcwMTE0NTZaMIHOMQswCQYDVQQG
+# EwJVUzETMBEGA1UECBMKV2FzaGluZ3RvbjEQMA4GA1UEBxMHUmVkbW9uZDEeMBwG
+# A1UEChMVTWljcm9zb2Z0IENvcnBvcmF0aW9uMSkwJwYDVQQLEyBNaWNyb3NvZnQg
+# T3BlcmF0aW9ucyBQdWVydG8gUmljbzEmMCQGA1UECxMdVGhhbGVzIFRTUyBFU046
+# QzRCRC1FMzdGLTVGRkMxJTAjBgNVBAMTHE1pY3Jvc29mdCBUaW1lLVN0YW1wIFNl
+# cnZpY2UwggEiMA0GCSqGSIb3DQEBAQUAA4IBDwAwggEKAoIBAQCdvNDJsGSl3AEu
+# 8dmbwOEzjgs8Put17PVCxlrXWQzd1ZfmhkBLDMBKyJIM0ItH0ztLDg/Td4TtR2k1
+# h6EvNDf0G+qC0dlgmZL/1TOFhZ04Tr98gOc0rfr7ijcK4xBxQtI5TAwiamlO0rel
+# iW5f5AD+bIDNKraRBEIcbVWn/CKFeZavL4DCTa99DuK6i2BIv2GVkGWMEBwIlTLp
+# wmKSYnHJzTjUUXYNg908rttnhCcD0D+g5HhIqDMvXoTJga5IwA1ToEFfk+Joq/oQ
+# CXiDcrKbOsIETuao7lefo73MzUGtVpu48bKgb9OBgpSKeTR7610JmfZqWXY9648R
+# bmWyo3dxAgMBAAGjggEbMIIBFzAdBgNVHQ4EFgQUgdRsFIDTjRv5EcKwaN4ZFfgM
+# nh4wHwYDVR0jBBgwFoAU1WM6XIoxkPNDe3xGG8UzaFqFbVUwVgYDVR0fBE8wTTBL
+# oEmgR4ZFaHR0cDovL2NybC5taWNyb3NvZnQuY29tL3BraS9jcmwvcHJvZHVjdHMv
+# TWljVGltU3RhUENBXzIwMTAtMDctMDEuY3JsMFoGCCsGAQUFBwEBBE4wTDBKBggr
+# BgEFBQcwAoY+aHR0cDovL3d3dy5taWNyb3NvZnQuY29tL3BraS9jZXJ0cy9NaWNU
+# aW1TdGFQQ0FfMjAxMC0wNy0wMS5jcnQwDAYDVR0TAQH/BAIwADATBgNVHSUEDDAK
+# BggrBgEFBQcDCDANBgkqhkiG9w0BAQsFAAOCAQEAW+UBt6pX6Fuq9VeJU/pDvC1M
+# xd9kt31H4J/0tUEAT8zkbP+ro49PcrR1jQ3znsMJEsmtX/EvXvgW515Jx+Zd0ep0
+# tgZEUwDbU5l8bzC0wsr3mHvyUCH6LPmd4idG9ahw0pxI+kJnX9TMpqzwJOY8YcYY
+# ol5cCC1I7x+esu6yx8StMJ7B9dhDvTJ5GkjVyTQpkpn4FBJAzc7udwt/ZelzUQD2
+# rs9v1rJSFGXF9zQwjIL+YWYtp4XffR8cmiSbHJ9X/IWVwPvn9RzW6vG3ZIdzmIEZ
+# za+0HZzvhrr7bt3chqmHUDDBj5wLeC+xMPcpI8tFKM+uP69Em0CEWLcuXjPTNzCC
+# BnEwggRZoAMCAQICCmEJgSoAAAAAAAIwDQYJKoZIhvcNAQELBQAwgYgxCzAJBgNV
+# BAYTAlVTMRMwEQYDVQQIEwpXYXNoaW5ndG9uMRAwDgYDVQQHEwdSZWRtb25kMR4w
+# HAYDVQQKExVNaWNyb3NvZnQgQ29ycG9yYXRpb24xMjAwBgNVBAMTKU1pY3Jvc29m
+# dCBSb290IENlcnRpZmljYXRlIEF1dGhvcml0eSAyMDEwMB4XDTEwMDcwMTIxMzY1
+# NVoXDTI1MDcwMTIxNDY1NVowfDELMAkGA1UEBhMCVVMxEzARBgNVBAgTCldhc2hp
+# bmd0b24xEDAOBgNVBAcTB1JlZG1vbmQxHjAcBgNVBAoTFU1pY3Jvc29mdCBDb3Jw
+# b3JhdGlvbjEmMCQGA1UEAxMdTWljcm9zb2Z0IFRpbWUtU3RhbXAgUENBIDIwMTAw
+# ggEiMA0GCSqGSIb3DQEBAQUAA4IBDwAwggEKAoIBAQCpHQ28dxGKOiDs/BOX9fp/
+# aZRrdFQQ1aUKAIKF++18aEssX8XD5WHCdrc+Zitb8BVTJwQxH0EbGpUdzgkTjnxh
+# MFmxMEQP8WCIhFRDDNdNuDgIs0Ldk6zWczBXJoKjRQ3Q6vVHgc2/JGAyWGBG8lhH
+# hjKEHnRhZ5FfgVSxz5NMksHEpl3RYRNuKMYa+YaAu99h/EbBJx0kZxJyGiGKr0tk
+# iVBisV39dx898Fd1rL2KQk1AUdEPnAY+Z3/1ZsADlkR+79BL/W7lmsqxqPJ6Kgox
+# 8NpOBpG2iAg16HgcsOmZzTznL0S6p/TcZL2kAcEgCZN4zfy8wMlEXV4WnAEFTyJN
+# AgMBAAGjggHmMIIB4jAQBgkrBgEEAYI3FQEEAwIBADAdBgNVHQ4EFgQU1WM6XIox
+# kPNDe3xGG8UzaFqFbVUwGQYJKwYBBAGCNxQCBAweCgBTAHUAYgBDAEEwCwYDVR0P
+# BAQDAgGGMA8GA1UdEwEB/wQFMAMBAf8wHwYDVR0jBBgwFoAU1fZWy4/oolxiaNE9
+# lJBb186aGMQwVgYDVR0fBE8wTTBLoEmgR4ZFaHR0cDovL2NybC5taWNyb3NvZnQu
+# Y29tL3BraS9jcmwvcHJvZHVjdHMvTWljUm9vQ2VyQXV0XzIwMTAtMDYtMjMuY3Js
+# MFoGCCsGAQUFBwEBBE4wTDBKBggrBgEFBQcwAoY+aHR0cDovL3d3dy5taWNyb3Nv
+# ZnQuY29tL3BraS9jZXJ0cy9NaWNSb29DZXJBdXRfMjAxMC0wNi0yMy5jcnQwgaAG
+# A1UdIAEB/wSBlTCBkjCBjwYJKwYBBAGCNy4DMIGBMD0GCCsGAQUFBwIBFjFodHRw
+# Oi8vd3d3Lm1pY3Jvc29mdC5jb20vUEtJL2RvY3MvQ1BTL2RlZmF1bHQuaHRtMEAG
+# CCsGAQUFBwICMDQeMiAdAEwAZQBnAGEAbABfAFAAbwBsAGkAYwB5AF8AUwB0AGEA
+# dABlAG0AZQBuAHQALiAdMA0GCSqGSIb3DQEBCwUAA4ICAQAH5ohRDeLG4Jg/gXED
+# PZ2joSFvs+umzPUxvs8F4qn++ldtGTCzwsVmyWrf9efweL3HqJ4l4/m87WtUVwgr
+# UYJEEvu5U4zM9GASinbMQEBBm9xcF/9c+V4XNZgkVkt070IQyK+/f8Z/8jd9Wj8c
+# 8pl5SpFSAK84Dxf1L3mBZdmptWvkx872ynoAb0swRCQiPM/tA6WWj1kpvLb9BOFw
+# nzJKJ/1Vry/+tuWOM7tiX5rbV0Dp8c6ZZpCM/2pif93FSguRJuI57BlKcWOdeyFt
+# w5yjojz6f32WapB4pm3S4Zz5Hfw42JT0xqUKloakvZ4argRCg7i1gJsiOCC1JeVk
+# 7Pf0v35jWSUPei45V3aicaoGig+JFrphpxHLmtgOR5qAxdDNp9DvfYPw4TtxCd9d
+# dJgiCGHasFAeb73x4QDf5zEHpJM692VHeOj4qEir995yfmFrb3epgcunCaw5u+zG
+# y9iCtHLNHfS4hQEegPsbiSpUObJb2sgNVZl6h3M7COaYLeqN4DMuEin1wC9UJyH3
+# yKxO2ii4sanblrKnQqLJzxlBTeCG+SqaoxFmMNO7dDJL32N79ZmKLxvHIa9Zta7c
+# RDyXUHHXodLFVeNp3lfB0d4wwP3M5k37Db9dT+mdHhk4L7zPWAUu7w2gUDXa7wkn
+# HNWzfjUeCLraNtvTX4/edIhJEqGCAtIwggI7AgEBMIH8oYHUpIHRMIHOMQswCQYD
+# VQQGEwJVUzETMBEGA1UECBMKV2FzaGluZ3RvbjEQMA4GA1UEBxMHUmVkbW9uZDEe
+# MBwGA1UEChMVTWljcm9zb2Z0IENvcnBvcmF0aW9uMSkwJwYDVQQLEyBNaWNyb3Nv
+# ZnQgT3BlcmF0aW9ucyBQdWVydG8gUmljbzEmMCQGA1UECxMdVGhhbGVzIFRTUyBF
+# U046QzRCRC1FMzdGLTVGRkMxJTAjBgNVBAMTHE1pY3Jvc29mdCBUaW1lLVN0YW1w
+# IFNlcnZpY2WiIwoBATAHBgUrDgMCGgMVALoXZo3g4p4Xwu4MNSgQnjP7+1eBoIGD
+# MIGApH4wfDELMAkGA1UEBhMCVVMxEzARBgNVBAgTCldhc2hpbmd0b24xEDAOBgNV
+# BAcTB1JlZG1vbmQxHjAcBgNVBAoTFU1pY3Jvc29mdCBDb3Jwb3JhdGlvbjEmMCQG
+# A1UEAxMdTWljcm9zb2Z0IFRpbWUtU3RhbXAgUENBIDIwMTAwDQYJKoZIhvcNAQEF
+# BQACBQDjWPzcMCIYDzIwMjAxMTEzMTYzODUyWhgPMjAyMDExMTQxNjM4NTJaMHcw
+# PQYKKwYBBAGEWQoEATEvMC0wCgIFAONY/NwCAQAwCgIBAAICBdICAf8wBwIBAAIC
+# Ec8wCgIFAONaTlwCAQAwNgYKKwYBBAGEWQoEAjEoMCYwDAYKKwYBBAGEWQoDAqAK
+# MAgCAQACAwehIKEKMAgCAQACAwGGoDANBgkqhkiG9w0BAQUFAAOBgQBzHEHQfy6a
+# pXTqzU0aLGgLZv9luGEUhZ8ZBJZyQuubQD+nOr0DTwxU10fjmxlWD8GgXIsQzaFT
+# 4mAobrbPhuAX2v79NyE3XAYK15UebiEyDYtvadYa5wuT1LYcKCLc5rs19U3mOaFH
+# tZMvJGbxRD30mOLNY3ucmJc7DSnZ7/5PmjGCAw0wggMJAgEBMIGTMHwxCzAJBgNV
+# BAYTAlVTMRMwEQYDVQQIEwpXYXNoaW5ndG9uMRAwDgYDVQQHEwdSZWRtb25kMR4w
+# HAYDVQQKExVNaWNyb3NvZnQgQ29ycG9yYXRpb24xJjAkBgNVBAMTHU1pY3Jvc29m
+# dCBUaW1lLVN0YW1wIFBDQSAyMDEwAhMzAAABIziw5K3YWpCdAAAAAAEjMA0GCWCG
+# SAFlAwQCAQUAoIIBSjAaBgkqhkiG9w0BCQMxDQYLKoZIhvcNAQkQAQQwLwYJKoZI
+# hvcNAQkEMSIEIFp0igljhd3QdcMITkM6Q6b0U1Ql9Neumy+zBI6tGPLvMIH6Bgsq
+# hkiG9w0BCRACLzGB6jCB5zCB5DCBvQQgEZozgz/7RMzEDaOjrMSkAAy/KcCiZDOW
+# J1yq6vsVgbMwgZgwgYCkfjB8MQswCQYDVQQGEwJVUzETMBEGA1UECBMKV2FzaGlu
+# Z3RvbjEQMA4GA1UEBxMHUmVkbW9uZDEeMBwGA1UEChMVTWljcm9zb2Z0IENvcnBv
+# cmF0aW9uMSYwJAYDVQQDEx1NaWNyb3NvZnQgVGltZS1TdGFtcCBQQ0EgMjAxMAIT
+# MwAAASM4sOSt2FqQnQAAAAABIzAiBCD45xJPDfNP1Xi1kcGKLoL8xxmAkd4aAJ9M
+# vHRiiIed8zANBgkqhkiG9w0BAQsFAASCAQBOkIQdCn8fs/O9OHHU/vwZK1GUvA4N
+# 1uQ0vlZfyHe5uAAZeiUi6mng7NBVBHWPf+zGGqCpYPh6ehj8ZhObO3hhn+92O2yB
+# XrjxSEgcCbdRc6LhtMEnRBxOsFEQWZWgr1EiPo0/4w8/isPMnv2yc6gnjP0dP1Bo
+# q6B+wCJT2H0GGst77vrP9+y5PN+OpeIoLMWXY1loc0UOolO4szSGWM3TfiRx6ocd
+# Z9Dd6CzpgwvpLq/pI/fiC2cmOARyqpZCvr2OgCcWeOsXhnLSf8kkhDO7eOOZaOuK
+# rHKneRTB7bHR5Eak78bMcs0fPf5iImmrVy53ttRuh/Ts5/2CRXzdH8R3
 # SIG # End signature block
