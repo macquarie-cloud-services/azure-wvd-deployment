@@ -12,7 +12,7 @@ stages:
     dependsOn: ''
     environment: SBX
     condition: and(succeeded(), true)
-    timeoutInMinutes: 120
+    timeoutInMinutes: 180
     pool:
       vmImage: $(vmImage)
     strategy:
@@ -56,13 +56,6 @@ stages:
                   TargetFolder: '$(Pipeline.Workspace)/s/Uploads/WVDScripts/001-AzFiles'
                   OverWrite: true
               - task: CopyFiles@2
-                name: Copy_wvdOptimizationTool_parameters
-                inputs:
-                  SourceFolder: '$(Build.Repository.LocalPath)/QS-WVD/Parameters'
-                  Contents: 'wvdoptimizationtool.parameters.json'
-                  TargetFolder: '$(Pipeline.Workspace)/s/Uploads/WVDScripts/005-wvdOptimizationTool'
-                  OverWrite: true
-              - task: CopyFiles@2
                 name: Copy_Deployment_parameters
                 inputs:
                   SourceFolder: '$(Build.Repository.LocalPath)/QS-WVD/Parameters'
@@ -75,6 +68,13 @@ stages:
                   targetPath: '$(Pipeline.Workspace)'
                   artifact: 'parameters'
                   publishLocation: 'pipeline'
+              - task: CopyFiles@2
+                name: Copy_wvdOptimizationTool_parameters
+                inputs:
+                  SourceFolder: '$(Build.Repository.LocalPath)/QS-WVD/Parameters'
+                  Contents: 'wvdoptimizationtool.parameters.json'
+                  TargetFolder: '$(Pipeline.Workspace)/s/Uploads/WVDScripts/005-wvdOptimizationTool'
+                  OverWrite: true
 
   - deployment: Deploy_wvdAssetsStorage
     dependsOn:
@@ -282,7 +282,7 @@ stages:
     - Deploy_WVDHostPool
     environment: SBX
     condition: and(succeeded(), true)
-    timeoutInMinutes: 120
+    timeoutInMinutes: 180
     pool:
       vmImage: $(vmImage)
     strategy:
