@@ -180,7 +180,7 @@ foreach ($config in $azfilesconfig.azfilesconfig) {
             Invoke-Command $scriptBlock -Verbose
 
             LogInfo("Execution policy for the admin user set. Now joining the storage account through another PSExec command... This command takes roughly 5 minutes")
-            $scriptBlock = { .\psexec /accepteula -h -u $username -p $domainJoinPassword -c -f "powershell.exe" "$scriptPath -I $SubscriptionId -S $StorageAccountName -RG $ResourceGroupName -U $AzureAdminUpn -P $AzureAdminPassword" >> azfilespsexec.log }
+            $scriptBlock = { .\psexec /accepteula -h -u $username -p $domainJoinPassword -c -f "powershell.exe" "$scriptPath -I $SubscriptionId -S $StorageAccountName -RG $ResourceGroupName -U $AzureAdminUpn -P $AzureAdminPassword" > C:\windows\temp\azfilespsexec.log }
             LogInfo("Scriptblock to execute: $scriptBlock")
             Invoke-Command $scriptBlock -Verbose
 
