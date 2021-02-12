@@ -4,8 +4,9 @@
     "parameters": {
         "customerName": {
             "type": "string",
+            "maxLength": 9,
             "metadata": {
-            "description": "Customer short name."
+                "description": "Customer short name."
             }
         }, 
         "existingVnetName": {
