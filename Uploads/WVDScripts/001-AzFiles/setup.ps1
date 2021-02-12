@@ -44,6 +44,7 @@ Install-Module -Name PowershellGet -MinimumVersion 2.2.4.1 -Force
 Install-Module -Name Az.Accounts -Force -Verbose
 Install-Module -Name Az.Storage -Force -Verbose
 Install-Module -Name Az.Network -Force -Verbose
+Install-Module -Name Az.Resources -Force -Verbose
 Import-Module -Name AzFilesHybrid -Force -Verbose
 
 #Import-Module -Name activedirectory -Force -Verbose
