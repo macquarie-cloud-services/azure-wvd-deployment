@@ -18,7 +18,7 @@
       "value": [
         {
           "name": "[profilesShareName]",
-          "shareQuota": "5120",
+          "shareQuota": "1024",
           "roleAssignments": [
             {
               "roleDefinitionIdOrName": "Storage File Data SMB Share Contributor",
