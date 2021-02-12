@@ -173,7 +173,7 @@
         "rgName": "[resourcegroup().name]",
         "keyvaultName": "[concat(parameters('customerName'),'-wvdkv', toLower(skip(parameters('utcValue'), 9)))]",
         "assetsName": "[concat(parameters('customerName'),'wvdassets')]",
-        "profilesName": "[concat(parameters('customerName'),'wvdprofiles')]",
+        "profilesName": "[concat(parameters('customerName'),'wvdprf')]",
         "autoAccountName": "[concat(parameters('customerName'), '-wvd-automation')]",
         "tenantId": "[subscription().tenantId]",
         "jobGuid0": "[guid(toLower(uniquestring(variables('identityName'), resourceGroup().id, parameters('utcValue'),'credentials')))]",
