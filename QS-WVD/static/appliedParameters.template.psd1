@@ -24,6 +24,7 @@
     storageAccountSku                     = "[storageAccountSku]"   # Storage account SKU. Recommended either Premium_ZRS if available in region or Premium_LRS
     storageAccountKind                    = "FileStorage"           # default, storage account type
     profilesShareName                     = "wvdprofiles"           # Name of the file share in the profiles storage account where profiles will be stored
+    profilesShareQuota                    = "[profilesShareQuota]"  # Quota of FileStorage in Gb
     ###################
 
     # Host pool related #
