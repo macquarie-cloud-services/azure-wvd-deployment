@@ -46,8 +46,7 @@ Install-Module -Name Az.Storage -Force -Verbose
 Install-Module -Name Az.Network -Force -Verbose
 Install-Module -Name Az.Resources -Force -Verbose
 Import-Module -Name AzFilesHybrid -Force -Verbose
-
-#Import-Module -Name activedirectory -Force -Verbose
+Import-Module -Name activedirectory -Force -Verbose
 
 # Find existing OU or create new one. Get path for OU from domain by splitting the domain name, to format DC=fabrikam,DC=com
 #$domain = $U.split('@')[1]
@@ -66,4 +65,12 @@ $Credential = New-Object System.Management.Automation.PsCredential($U, (ConvertT
 Connect-AzAccount -Credential $Credential
 Set-AzContext -SubscriptionId $I
 
-Join-AzStorageAccountForAuth -ResourceGroupName $RG -StorageAccountName $S -DomainAccountType 'ComputerAccount' -OverwriteExistingADObject
+# Check if Storage Account has been joined to Windows AD
+$profilestorage = Get-AzStorageAccount -StorageAccountName $S -ResourceGroupName $RG
+If ($profilestorage.AzureFilesIdentityBasedAuth.ActiveDirectoryProperties.DomainSid) {
+    Write-Output "`nStorage Account $S already joined to domain $($profilestorage.AzureFilesIdentityBasedAuth.ActiveDirectoryProperties.DomainName)"
+}
+Else {
+    Write-Output "`nJoining Storage Account $S to domain $($profilestorage.AzureFilesIdentityBasedAuth.ActiveDirectoryProperties.DomainName)"
+    Join-AzStorageAccountForAuth -ResourceGroupName $RG -StorageAccountName $S -DomainAccountType 'ComputerAccount' -OverwriteExistingADObject
+}
