@@ -113,6 +113,9 @@
         "tags": {
             "value": {}
         },
+        "windowsConfiguration": {
+            "enableAutomaticUpdates": false
+        },
         "windowsScriptExtensionFileData": {
             "value": [
                 {
