@@ -35,8 +35,8 @@
     loadBalancerType                      = "BreadthFirst"                      # Load-balancing algorithm
     vmNamePrefix                          = "[vmNamePrefix]"                    # Prefix for the WVD VMs that will be deployed
     vmSize                                = "[hostpoolVMSize]"                  # The VM SKU
-    vmNumberOfInstances                   = [hostpoolVMCount]                   # Number of VMs to be deployed
-    vmInitialNumber                       = 1                                   # default
+    #vmNumberOfInstances                   = [hostpoolVMCount]                   # Number of VMs to be deployed
+    #vmInitialNumber                       = 1                                   # default
     diskSizeGB                            = 128                                 # Size of the VMs' disk
     vmDiskType                            = "Premium_LRS"                       # SKU of the above disk
     domainJoinUser                        = "[DomainJoinAccountUPN]"            # The domain join account UPN
