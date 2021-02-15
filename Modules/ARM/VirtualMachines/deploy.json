@@ -826,7 +826,7 @@
         },
         {
             "type": "Microsoft.Compute/availabilitySets",
-            "apiVersion": "2019-07-01",
+            "apiVersion": "2020-06-01",
             "condition": "[not(empty(parameters('availabilitySetName')))]",
             "location": "[parameters('location')]",
             "tags": "[parameters('tags')]",
@@ -845,7 +845,7 @@
         },
         {
             "type": "Microsoft.Compute/virtualMachineScaleSets",
-            "apiVersion": "2019-07-01",
+            "apiVersion": "2020-06-01",
             "condition": "[not(empty(parameters('scaleSetName')))]",
             "location": "[parameters('location')]",
             "tags": "[parameters('tags')]",
@@ -861,7 +861,7 @@
         },
         {
             "type": "Microsoft.Compute/proximityPlacementGroups",
-            "apiVersion": "2019-07-01",
+            "apiVersion": "2020-06-01",
             "condition": "[not(empty(parameters('proximityPlacementGroupName')))]",
             "location": "[parameters('location')]",
             "tags": "[parameters('tags')]",
@@ -873,7 +873,7 @@
         {
             "name": "[variables('vmNames')[copyIndex()]]",
             "type": "Microsoft.Compute/virtualMachines",
-            "apiVersion": "2019-07-01",
+            "apiVersion": "2020-06-01",
             "location": "[parameters('location')]",
             "copy": {
                 "name": "vmLoop",
@@ -973,7 +973,7 @@
                 {
                     "type": "Microsoft.Compute/virtualMachines/extensions",
                     "name": "[concat(variables('vmNames')[copyIndex()],'/DomainJoin')]",
-                    "apiVersion": "2019-07-01",
+                    "apiVersion": "2020-06-01",
                     "location": "[parameters('location')]",
                     "condition": "[not(empty(parameters('domainName')))]",
                     "dependsOn": [
@@ -999,7 +999,7 @@
                 {
                     "type": "Microsoft.Compute/virtualMachines/extensions",
                     "name": "[concat(variables('vmNames')[copyIndex()], '/MicrosoftAntiMalware')]",
-                    "apiVersion": "2019-07-01",
+                    "apiVersion": "2020-06-01",
                     "location": "[parameters('location')]",
                     "condition": "[parameters('enableMicrosoftAntiMalware')]",
                     "dependsOn": [
@@ -1017,7 +1017,7 @@
                 {
                     "type": "Microsoft.Compute/virtualMachines/extensions",
                     "name": "[concat(variables('vmNames')[copyIndex()], '/WindowsMMA-Agent')]",
-                    "apiVersion": "2019-07-01",
+                    "apiVersion": "2020-06-01",
                     "location": "[parameters('location')]",
                     "condition": "[parameters('enableWindowsMMA-Agent')]",
                     "dependsOn": [
@@ -1040,7 +1040,7 @@
                 {
                     "type": "Microsoft.Compute/virtualMachines/extensions",
                     "name": "[concat(variables('vmNames')[copyIndex()], '/LinuxMMA-Agent')]",
-                    "apiVersion": "2019-07-01",
+                    "apiVersion": "2020-06-01",
                     "location": "[parameters('location')]",
                     "condition": "[parameters('enableLinuxMMA-Agent')]",
                     "dependsOn": [
@@ -1063,7 +1063,7 @@
                 {
                     "type": "Microsoft.Compute/virtualMachines/extensions",
                     "name": "[concat(variables('vmNames')[copyIndex()], '/WindowsDiskEncryption')]",
-                    "apiVersion": "2019-07-01",
+                    "apiVersion": "2020-06-01",
                     "location": "[parameters('location')]",
                     "condition": "[parameters('enableWindowsDiskEncryption')]",
                     "dependsOn": [
@@ -1091,7 +1091,7 @@
                 {
                     "type": "Microsoft.Compute/virtualMachines/extensions",
                     "name": "[concat(variables('vmNames')[copyIndex()], '/LinuxDiskEncryption')]",
-                    "apiVersion": "2019-07-01",
+                    "apiVersion": "2020-06-01",
                     "location": "[parameters('location')]",
                     "condition": "[parameters('enableLinuxDiskEncryption')]",
                     "dependsOn": [
@@ -1117,7 +1117,7 @@
                 },
                 {
                     "type": "Microsoft.Compute/virtualMachines/extensions",
-                    "apiVersion": "2019-07-01",
+                    "apiVersion": "2020-06-01",
                     "name": "[concat(variables('vmNames')[copyIndex()], '/DependencyAgentWindows')]",
                     "location": "[parameters('location')]",
                     "condition": "[parameters('enableWindowsDependency-Agent')]",
@@ -1134,7 +1134,7 @@
                 },
                 {
                     "type": "Microsoft.Compute/virtualMachines/extensions",
-                    "apiVersion": "2019-07-01",
+                    "apiVersion": "2020-06-01",
                     "name": "[concat(variables('vmNames')[copyIndex()], '/DependencyAgentLinux')]",
                     "location": "[parameters('location')]",
                     "condition": "[parameters('enableLinuxDependency-Agent')]",
@@ -1152,7 +1152,7 @@
                 {
                     "type": "Microsoft.Compute/virtualMachines/extensions",
                     "name": "[concat(variables('vmNames')[copyIndex()], '/NetworkWatcherAgentWindows')]",
-                    "apiVersion": "2019-07-01",
+                    "apiVersion": "2020-06-01",
                     "location": "[parameters('location')]",
                     "condition": "[parameters('enableNetworkWatcherWindows')]",
                     "dependsOn": [
@@ -1171,7 +1171,7 @@
                 {
                     "type": "Microsoft.Compute/virtualMachines/extensions",
                     "name": "[concat(variables('vmNames')[copyIndex()], '/NetworkWatcherAgentLinux')]",
-                    "apiVersion": "2019-07-01",
+                    "apiVersion": "2020-06-01",
                     "location": "[parameters('location')]",
                     "condition": "[parameters('enableNetworkWatcherLinux')]",
                     "dependsOn": [
@@ -1210,7 +1210,7 @@
         },
         
         {
-            "apiVersion": "2019-07-01",
+            "apiVersion": "2020-06-01",
             "type": "Microsoft.Compute/virtualMachines/extensions",
             "name": "[concat(variables('vmNames')[copyIndex()], '/WindowsCustomScriptExtension')]",
             "location": "[parameters('location')]",
