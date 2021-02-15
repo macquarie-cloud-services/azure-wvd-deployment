@@ -79,6 +79,9 @@ variables:
 - name: HostPoolName
   value: "[hostpoolname]"
 
+- name: vmInitialNumber
+  value: "[vmInitialNumber]"
+
 - name: vmNumberOfInstances
   value: [hostpoolVMCount]
 
