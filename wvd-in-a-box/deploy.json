@@ -53,6 +53,12 @@
                 "standard_e2s_v4"
             ]
         },
+        "vmInitialNumber": {
+            "type": "string",
+            "metadata": {
+                "description": "Number of first VM to be built. Used in the VM name . eg. vm001"
+            }
+        },
         "hostpoolVMCount": {
             "type": "int",
             "metadata": {
