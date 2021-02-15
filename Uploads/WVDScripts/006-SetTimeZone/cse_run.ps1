@@ -131,9 +131,9 @@ $restParams = @{
     ContentType = 'Application/Json'
 }
 $tzList = Invoke-RestMethod @restParams
-$tzresult = $tzList | Where-Object { $locData.TimeZones.id -in $_.IanaIds }
+$tzresult = $tzList | Where-Object { $locData.timezone -in $_.IanaIds } | Get-Unique
 
-$scriptBlock = { Set-TimeZone -Id $tzresult }
+$scriptBlock = { Set-TimeZone -Id $tzresult.WindowsId }
 LogInfo("Invoking command with the following scriptblock: $scriptBlock")
 Invoke-Command $scriptBlock -Verbose
 
