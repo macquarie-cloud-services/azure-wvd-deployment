@@ -114,7 +114,12 @@
             "value": {}
         },
         "windowsConfiguration": {
-            "enableAutomaticUpdates": false
+            "value": {
+                "enableAutomaticUpdates": false,
+                "patchSettings": {
+                    "patchMode": "Manual"
+                }
+            }
         },
         "windowsScriptExtensionFileData": {
             "value": [
