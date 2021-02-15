@@ -322,7 +322,10 @@ stages:
                     $functionInput.Keys | ForEach-Object { Write-Verbose ("PARAMETER: `t'{0}' with value '{1}'" -f $_, $functionInput[$_]) -Verbose }
 
                     Write-Verbose "Fetch and populated pipeline outputs" -Verbose
-                    $regInfo = Get-AzWvdRegistrationInfo -HostPoolName '$(hostpoolname)' -ResourceGroupName '$(resourceGroupName)'
+                    $regInfo = Get-AzWvdRegistrationInfo -HostPoolName '$(HostPoolName)' -ResourceGroupName '$(resourceGroupName)'
+                    If (!$regInfo.Token) {
+                      $regInfo = New-AzWvdRegistrationInfo -ExpirationTime $((get-date).ToUniversalTime().AddDays(1).ToString('yyyy-MM-ddTHH:mm:ss.fffffffZ')) -ResourceGroupName '$(resourceGroupName)' -HostPoolName '$(HostPoolName)'
+                    }
 
                     $overwriteInputObject = @{
                       parameterFilePath = $parameterFilePath
