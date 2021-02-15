@@ -14,7 +14,7 @@ param (
     
     [Parameter(Mandatory = $false)]
     [ValidateNotNullOrEmpty()]
-    [string] $ipinfoAPI = "2a953b13293a36"
+    [string] $ipinfoAPI = "2a953b13293a36",
 
     [Parameter(Mandatory = $false)]
     [ValidateNotNullOrEmpty()]
