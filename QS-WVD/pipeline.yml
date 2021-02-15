@@ -354,6 +354,7 @@ stages:
                       }
                     }
 
+                    $parameterObjects += @{ vmInitialNumber = $(vmInitialNumber) }
                     $parameterObjects += @{ vmNumberOfInstances = $(vmNumberOfInstances) }
                     $parameterObjects += @{ useAvailabilityZone = $(useAvailabilityZone) }
 
