@@ -147,7 +147,7 @@ stages:
     dependsOn:
     - Deploy_wvdAssetsStorage
     environment: SBX
-    condition: and(succeeded(), true)
+    condition: and(succeeded(), ne(variables['addVMsToHostpoolOnly'], true))
     timeoutInMinutes: 120
     pool:
       vmImage: $(vmImage)
@@ -200,7 +200,7 @@ stages:
     dependsOn: 
     - Deploy_WVDProfilesStorageAccount01
     environment: SBX
-    condition: and(succeeded(), true)
+    condition: and(succeeded(), ne(variables['addVMsToHostpoolOnly'], true))
     timeoutInMinutes: 120
     pool:
       vmImage: $(vmImage)
@@ -241,7 +241,7 @@ stages:
     - Deploy_WVDHostPool
     - Deploy_WVDSessionHosts
     environment: SBX
-    condition: and(succeeded(), true)
+    condition: and(succeeded(), ne(variables['addVMsToHostpoolOnly'], true))
     timeoutInMinutes: 120
     pool:
       vmImage: $(vmImage)
@@ -279,9 +279,15 @@ stages:
 
   - deployment: Deploy_WVDSessionHosts
     dependsOn:
+    - Deploy_wvdAssetsStorage
     - Deploy_WVDHostPool
     environment: SBX
-    condition: and(succeeded(), true)
+    condition: |
+      and
+      (
+        in(dependencies.Deploy_wvdAssetsStorage.result, 'Succeeded', 'SucceededWithIssues'),
+        in(dependencies.Deploy_WVDHostPool.result, 'Succeeded', 'SucceededWithIssues', 'Skipped')
+      )
     timeoutInMinutes: 180
     pool:
       vmImage: $(vmImage)
@@ -383,7 +389,7 @@ stages:
     dependsOn:
     - Deploy_DesktopAppGroup
     environment: SBX
-    condition: and(succeeded(), true)
+    condition: and(succeeded(), ne(variables['addVMsToHostpoolOnly'], true))
     timeoutInMinutes: 120
     pool:
       vmImage: $(vmImage)
@@ -424,7 +430,7 @@ stages:
     - Deploy_WVDHostPool
     - Deploy_WVDSessionHosts
     environment: SBX
-    condition: and(succeeded(), eq(variables['enableApplicationJob'], true))
+    condition: and(succeeded(), eq(variables['enableApplicationJob'], true), ne(variables['addVMsToHostpoolOnly'], true))
     timeoutInMinutes: 120
     pool:
       vmImage: $(vmImage)
@@ -465,7 +471,7 @@ stages:
     - Deploy_WVDSessionHosts
     - Deploy_RemoteAppGroup
     environment: SBX
-    condition: and(succeeded(), eq(variables['enableApplicationJob'], true))
+    condition: and(succeeded(), eq(variables['enableApplicationJob'], true), ne(variables['addVMsToHostpoolOnly'], true))
     timeoutInMinutes: 120
     pool:
       vmImage: $(vmImage)
