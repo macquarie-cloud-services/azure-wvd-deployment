@@ -627,7 +627,7 @@
             "copy": [
                 {
                     "name": "zones",
-                    "count": "[add(parameters('vmInitialNumber'),2)]",
+                    "count": "[length(variables('vmNames'))]",
                     "input": "[string(add(mod(copyIndex('zones'), 3), 1))]"
                 }
             ]
