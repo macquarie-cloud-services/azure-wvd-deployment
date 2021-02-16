@@ -76,7 +76,9 @@
             "value": false
         },
         "tags": {
-            "value": {}
+            "value": {
+                "mcsMonitored": "No"
+            }
         },
         "windowsConfiguration": {
             "value": {
