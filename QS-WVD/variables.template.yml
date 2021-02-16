@@ -56,6 +56,9 @@ variables:
   value: "[resourceGroupName]"
 
 ## Jobs
+- name: addVMsToHostpoolOnly
+  value: false  # To enable/disable adding VMs to Host Pool
+
 - name: enableApplicationJob
   value: false  # To enable/disable remote apps job
 
