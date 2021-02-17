@@ -7,7 +7,7 @@ if ($runSysprep) {
   Remove-Item C:\windows\Panther\test -Recurse -Force
   
   write-output "`nStarting Sysprep..."
-  Start-Process -FilePath C:\Windows\System32\Sysprep\Sysprep.exe -ArgumentList '/generalize /oobe /shutdown /quiet'
+  Start-Process -FilePath C:\Windows\System32\Sysprep\Sysprep.exe -ArgumentList '/generalize /oobe /shutdown /quiet' -Wait
 }
 else {
   write-output "`nSkipping Sysprep..."
