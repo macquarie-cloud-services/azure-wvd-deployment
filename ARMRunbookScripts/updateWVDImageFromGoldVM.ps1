@@ -128,6 +128,7 @@ $image = New-AzImageConfig -Location $vmLocation -SourceVirtualMachineId $vm.Id
 Write-Output "`nCreating image $imageName based on $vmName"
 New-AzImage -Image $image -ImageName $imageName -Resourcegroupname $vmRG
 $managedImage = Get-AzImage -ImageName $imageName -Resourcegroupname $vmRG
+Write-Output $managedImage
 
 # Copy managed image to Shared Image Gallery
 $galleryVer = $galleryImageVersion.Split('.')
@@ -143,7 +144,9 @@ If ($galleryVer[0] -eq "1") {
     $galleryImageVersion = $galleryVer[0] + "." + $galleryVer[1] + "." + ([int]$galleryVer[2]+1)
 }
 
-$region1 = @{Name='$vmLocation';ReplicaCount=1}
+$regionName = (Get-AzLocation | where {$_.Location -eq $location} | Select DisplayName).DisplayName
+Write-Output "`nConverting region name to display name..."
+$region1 = @{Name=$regionName;ReplicaCount=1}
 $targetRegions = @($region1)
 
 $imgExpiry = Get-Date -date $(Get-Date).AddDays(365) -UFormat %Y-%m-%d
@@ -159,16 +162,16 @@ $job = $imageVersion = New-AzGalleryImageVersion `
    -PublishingProfileEndOfLifeDate $imgExpiry.ToString() `
    -AsJob
 
-Write-Output $job
+Write-Output $job | fl
+
+While ($job.State -eq "running") {
+    Write-Output "`nJob still running. Checking status every 5 minutes..."
+    Start-Sleep 300
+}
 
 If ($job.State -eq "failed") {
     Write-Error "`nCopy of managed image to $sigGalleryName failed."
-    Write-Error $job
-}
-
-While ($job.State -eq "running") {
-    Write-Output $($job.State)
-    Start-Sleep 300
+    Write-Error $job | fl
 }
 
 If ($job.State -eq "Completed") {
@@ -193,22 +196,22 @@ Write-Output "`nCreating new disk from snapshot..."
 $OSdisk = New-AzDisk -Disk $diskConfig -ResourceGroupName $vmRG -DiskName $osDiskName -ErrorAction Stop
 
 Write-Output "Creating new VM config and attaching new disk..."
-$newVM = New-AzVMConfig -VMName $vmName -VMSize $vm.HardwareProfile.VmSize -ErrorAction Stop
-Set-AzVMOSDisk -VM $newVM -CreateOption Attach -ManagedDiskId $OSdisk.Id -Name $OSdisk.Name -Windows -ErrorAction Stop
+$newVMConf = New-AzVMConfig -VMName $vmName -VMSize $vm.HardwareProfile.VmSize -ErrorAction Stop
+Set-AzVMOSDisk -VM $newVMConf -CreateOption Attach -ManagedDiskId $OSdisk.Id -Name $OSdisk.Name -Windows -ErrorAction Stop
 
 Foreach ($nic in $vm.NetworkProfile.NetworkInterfaces) {	
 	If ($nic.Primary -eq "True") {
         Write-Output "Attaching original NIC $($nic.Id) to new VM..."
-    	Add-AzVMNetworkInterface -VM $newVM -Id $nic.Id -Primary -ErrorAction Stop
+    	Add-AzVMNetworkInterface -VM $newVMConf -Id $nic.Id -Primary -ErrorAction Stop
     }
     Else {
         Write-Output "Attaching original NIC $($nic.Id) to new VM..."
-       	Add-AzVMNetworkInterface -VM $newVM -Id $nic.Id -ErrorAction Stop
+       	Add-AzVMNetworkInterface -VM $newVMConf -Id $nic.Id -ErrorAction Stop
     }
 }
 
 Write-Output "Creating new VM from config..."
-New-AzVM -ResourceGroupName $vmRG -Location $vmLocation -VM $newVM -DisableBginfoExtension -ErrorAction Stop
+$newVM = New-AzVM -ResourceGroupName $vmRG -Location $vmLocation -VM $newVMConf -DisableBginfoExtension -ErrorAction Stop
 If ($vmTags) {
     Write-Output "Setting the same tags as that of the original VM..."
     Set-AzResource -ResourceId $newVM.Id -Tag $vmTags -Force
