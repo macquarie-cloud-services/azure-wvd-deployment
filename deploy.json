@@ -507,6 +507,25 @@
                             "name": "devOpsSetupRunbook"
                         }
                     }
+                },
+                {
+                    "type": "runbooks",
+                    "apiVersion": "2015-01-01-preview",
+                    "name": "updateWVDImageFromGoldVMRunbook",
+                    "location": "[resourceGroup().location]",
+                    "dependsOn": [
+                        "[concat('Microsoft.Automation/automationAccounts/', variables('autoAccountName'))]"
+                    ],
+                    "tags": {},
+                    "properties": {
+                        "runbookType": "PowerShell",
+                        "logProgress": false,
+                        "logVerbose": false,
+                        "publishContentLink": {
+                            "uri": "[concat(variables('_artifactsLocation'),'/ARMRunbookScripts/updateWVDImageFromGoldVM.ps1')]",
+                            "version": "1.0.0.0"
+                        }
+                    }
                 }
             ]
         },
