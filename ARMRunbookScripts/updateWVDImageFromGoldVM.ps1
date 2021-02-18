@@ -143,23 +143,28 @@ If ($galleryVer[0] -eq "1") {
     $galleryImageVersion = $galleryVer[0] + "." + $galleryVer[1] + "." + ([int]$galleryVer[2]+1)
 }
 
-Write-Output "`nCapturing VM $vmName to $sigGalleryName ..."
-$region1 = @{Name=$location;ReplicaCount=1}
+$region1 = @{Name='$vmLocation';ReplicaCount=1}
 $targetRegions = @($region1)
 
 $imgExpiry = Get-Date -date $(Get-Date).AddDays(365) -UFormat %Y-%m-%d
-$imageDefinition = Get-AzGalleryImageDefinition -ResourceGroupName $ResourceGroupName -GalleryName $sigGalleryName -Name $galleryImageDef
-Write-Output "`nCopying image to $sigGalleryName/$($imageDefinition.Name) as version $galleryImageVersion ..."
+Write-Output "`nCopying image to $sigGalleryName/$galleryImageDef as version $galleryImageVersion ..."
 $job = $imageVersion = New-AzGalleryImageVersion `
-   -GalleryImageDefinitionName $imageDefinition.Name `
+   -GalleryImageDefinitionName $galleryImageDef `
    -GalleryImageVersionName $galleryImageVersion `
    -GalleryName $sigGalleryName `
    -ResourceGroupName $ResourceGroupName `
-   -Location $location `
+   -Location $vmLocation `
    -TargetRegion $targetRegions `
    -SourceImageId $managedImage.Id.ToString() `
    -PublishingProfileEndOfLifeDate $imgExpiry.ToString() `
    -AsJob
+
+Write-Output $job
+
+If ($job.State -eq "failed") {
+    Write-Error "`nCopy of managed image to $sigGalleryName failed."
+    Write-Error $job
+}
 
 While ($job.State -eq "running") {
     Write-Output $($job.State)
