@@ -8,6 +8,11 @@
 ###     5. Copy managed image to Shared Image Gallery incrementing image version
 ###     6. Delete and recreate Gold VM from disk snapshot.
 
+param(
+    [Parameter(Mandatory = $true)]
+    [string] $vmName
+)
+
 # Initializing variables from automation account
 $SubscriptionId = Get-AutomationVariable -Name 'subscriptionid'
 $ResourceGroupName = Get-AutomationVariable -Name 'ResourceGroupName'
@@ -42,8 +47,7 @@ $AzCredentials.password.MakeReadOnly()
 Connect-AzAccount -Environment 'AzureCloud' -Credential $AzCredentials -ErrorAction Stop
 Set-AzContext -SubscriptionId $SubscriptionId -ErrorAction Stop
 
-# Take disk snapshot of the wvd-gold-vm001 disk
-$vmName = 'wvd-gold-vm001'
+# Take disk snapshot
 $vm = Get-AzVM -Name $vmName -ErrorAction Stop
 $vmRG = $vm.ResourceGroupName
 $vmLocation = $vm.Location
