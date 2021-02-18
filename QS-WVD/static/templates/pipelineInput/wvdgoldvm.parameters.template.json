@@ -80,6 +80,7 @@
                 "mcsMonitored": "No"
             }
         },
+        "licenseType": "Windows_Client",
         "windowsConfiguration": {
             "value": {
                 "enableAutomaticUpdates": true,
