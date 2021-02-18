@@ -1,43 +1,36 @@
-#Initializing variables from automation account
+### Author: Raymond Phoon
+### Description: Script to upload Gold VM as new Shared Gallery Image to update WVD Host Pool
+### Steps:
+###     1. Shut down Gold VM.
+###     2. Take snapshot of VM.
+###     3. Power On VM and run sysprep.
+###     4. Set VM status as Generalized and capture image from VM.
+###     5. Copy managed image to Shared Image Gallery incrementing image version
+###     6. Delete and recreate Gold VM from disk snapshot.
+
+# Initializing variables from automation account
 $SubscriptionId = Get-AutomationVariable -Name 'subscriptionid'
 $ResourceGroupName = Get-AutomationVariable -Name 'ResourceGroupName'
 $location = Get-AutomationVariable -Name 'location'
-$adminUsername = Get-AutomationVariable -Name 'adminUsername'
-$keyvaultName = Get-AutomationVariable -Name 'keyvaultName'
 $sigGalleryName = Get-AutomationVariable -Name 'sigGalleryName'
 $galleryImageDef = Get-AutomationVariable -Name 'galleryImageDef' -ErrorAction "SilentlyContinue"
 $galleryImageVersion = Get-AutomationVariable -Name 'galleryImageVersion' -ErrorAction "SilentlyContinue"
 $fileURI = Get-AutomationVariable -Name 'fileURI'
 
 # Download files required for this script from github ARMRunbookScripts/static folder
-$FileNames = "msft-wvd-saas-api.zip,msft-wvd-saas-web.zip,AzureModules.zip"
-$SplitFilenames = $FileNames.split(",")
-foreach($Filename in $SplitFilenames){
+$FileName = "AzureModules.zip"
 Invoke-WebRequest -Uri "$fileURI/ARMRunbookScripts/static/$Filename" -OutFile "C:\$Filename"
-}
-
-#New-Item -Path "C:\msft-wvd-saas-offering" -ItemType directory -Force -ErrorAction SilentlyContinue
 Expand-Archive "C:\AzureModules.zip" -DestinationPath 'C:\Modules\Global' -ErrorAction SilentlyContinue
 
 # Install required Az modules and AzureAD
 Import-Module Az.Accounts -Global
 Import-Module Az.Resources -Global
-Import-Module Az.Websites -Global
 Import-Module Az.Automation -Global
-Import-Module Az.Managedserviceidentity -Global
-Import-Module Az.Keyvault -Global
 Import-Module Az.Compute -Global
 
 Set-ExecutionPolicy -ExecutionPolicy Undefined -Scope Process -Force -Confirm:$false
 Set-ExecutionPolicy -ExecutionPolicy Unrestricted -Scope LocalMachine -Force -Confirm:$false
 Get-ExecutionPolicy -List
-
-#The name of the Automation Credential Asset this runbook will use to authenticate to Azure.
-$CredentialAssetName = 'ServicePrincipalCred'
-
-#Authenticate Azure
-#Get the credential with the above name from the Automation Asset store
-$SPCredentials = Get-AutomationPSCredential -Name $CredentialAssetName
 
 #The name of the Automation Credential Asset this runbook will use to authenticate to Azure.
 $AzCredentialsAsset = 'AzureCredentials'
@@ -46,16 +39,8 @@ $AzCredentialsAsset = 'AzureCredentials'
 #Get the credential with the above name from the Automation Asset store
 $AzCredentials = Get-AutomationPSCredential -Name $AzCredentialsAsset
 $AzCredentials.password.MakeReadOnly()
-Connect-AzAccount -Environment 'AzureCloud' -Credential $AzCredentials
-Select-AzSubscription -SubscriptionId $SubscriptionId
-
-# Get the context
-$context = Get-AzContext
-if ($context -eq $null)
-{
-	Write-Error "Please authenticate to Azure & Azure AD using Connect-AzAccount cmdlets and then run this script"
-	exit
-}
+Connect-AzAccount -Environment 'AzureCloud' -Credential $AzCredentials -ErrorAction Stop
+Set-AzContext -SubscriptionId $SubscriptionId -ErrorAction Stop
 
 # Take disk snapshot of the wvd-gold-vm001 disk
 $vmName = 'wvd-gold-vm001'
@@ -123,10 +108,24 @@ while ($vmStatus -notmatch "stopped") {
     $vmStatus = (Get-AzVM -Name $vmName -Resourcegroup $vmRG -Status).Statuses[1].Code
 }
 
+# Sysprep only stops the VM. Deallocate VM to continue.
+Write-Output "`nVM stopped. Deallocating VM."
+Stop-AzVM -Name $vmName -Resourcegroup $vmRG -Force
+$vmStatus = (Get-AzVM -Name $vmName -Resourcegroup $vmRG -Status).Statuses[1].Code
+while ($vmStatus -notmatch "deallocated") {
+    Write-Output "`nWaiting 30 seconds for VM to be deallocated."
+    Start-Sleep 30
+    $vmStatus = (Get-AzVM -Name $vmName -Resourcegroup $vmRG -Status).Statuses[1].Code
+}
+
+# Set status of VM to Generalized
+Write-Output "`nVM deallocated. Now setting VM status to Generalized for image capture."
+Set-AzVm -ResourceGroupName $vmRG -Name $vmName -Generalized
+
 # Create Managed Image from Gold VM
 $imageName = $osDiskName + "_syspreped_" + (Get-Date -UFormat %Y%m%d%R | ForEach-Object { $_ -replace ":", "" })
 $image = New-AzImageConfig -Location $vmLocation -SourceVirtualMachineId $vm.Id 
-Write-Output "nCreating image $imageName based on $vmName"
+Write-Output "`nCreating image $imageName based on $vmName"
 New-AzImage -Image $image -ImageName $imageName -Resourcegroupname $vmRG
 $managedImage = Get-AzImage -ImageName $imageName -Resourcegroupname $vmRG
 
@@ -144,20 +143,23 @@ If ($galleryVer[0] -eq "1") {
     $galleryImageVersion = $galleryVer[0] + "." + $galleryVer[1] + "." + ([int]$galleryVer[2]+1)
 }
 
-Write-Output "Capturing VM $vmName to $sigGalleryName ..."
-$region = @{Name=$location;ReplicaCount=1}
+Write-Output "`nCapturing VM $vmName to $sigGalleryName ..."
+$region1 = @{Name=$location;ReplicaCount=1}
+$targetRegions = @($region1)
+
 $imgExpiry = Get-Date -date $(Get-Date).AddDays(365) -UFormat %Y-%m-%d
 $imageDefinition = Get-AzGalleryImageDefinition -ResourceGroupName $ResourceGroupName -GalleryName $sigGalleryName -Name $galleryImageDef
+Write-Output "`nCopying image to $sigGalleryName/$($imageDefinition.Name) as version $galleryImageVersion ..."
 $job = $imageVersion = New-AzGalleryImageVersion `
    -GalleryImageDefinitionName $imageDefinition.Name `
    -GalleryImageVersionName $galleryImageVersion `
    -GalleryName $sigGalleryName `
    -ResourceGroupName $ResourceGroupName `
    -Location $location `
-   -TargetRegion $region  `
+   -TargetRegion $targetRegions `
    -SourceImageId $managedImage.Id.ToString() `
-   -PublishingProfileEndOfLifeDate $imgExpiry `  
-   -asJob
+   -PublishingProfileEndOfLifeDate $imgExpiry.ToString() `
+   -AsJob
 
 While ($job.State -eq "running") {
     Write-Output $($job.State)
@@ -168,5 +170,45 @@ If ($job.State -eq "Completed") {
     Write-Output "`nImage copy to $sigGalleryName completed successfully. Writing image version back to Automation Account variable."
     Set-AutomationVariable -Name 'galleryImageVersion' -Value $galleryImageVersion
 }
+
+### Recreate gold VM from snapshot
+
+Write-Output "`nThe Generalized Gold VM can no longer be used. Recreating VM from snapshot taken..."
+
+Write-Output "...Removing Generalized VM and syspreped OS disk..."
+Remove-AzVM -ResourceGroupName $vmRG -Name $vmName -Force
+Remove-AzDisk -ResourceGroupName $vmRG -DiskName $osDiskName -Force
+
+# Take a record of all tags on the VM
+If ($vm.tags) {
+    $vmTags = $vm.tags
+}
+$diskConfig = New-AzDiskConfig -Location $vmLocation -SourceResourceId $diskSnapshot.Id -CreateOption Copy -SkuName "Premium_LRS" -ErrorAction Stop
+Write-Output "`nCreating new disk from snapshot..."
+$OSdisk = New-AzDisk -Disk $diskConfig -ResourceGroupName $vmRG -DiskName $osDiskName -ErrorAction Stop
+
+Write-Output "Creating new VM config and attaching new disk..."
+$newVM = New-AzVMConfig -VMName $vmName -VMSize $vm.HardwareProfile.VmSize -ErrorAction Stop
+Set-AzVMOSDisk -VM $newVM -CreateOption Attach -ManagedDiskId $OSdisk.Id -Name $OSdisk.Name -Windows -ErrorAction Stop
+
+Foreach ($nic in $vm.NetworkProfile.NetworkInterfaces) {	
+	If ($nic.Primary -eq "True") {
+        Write-Output "Attaching original NIC $($nic.Id) to new VM..."
+    	Add-AzVMNetworkInterface -VM $newVM -Id $nic.Id -Primary -ErrorAction Stop
+    }
+    Else {
+        Write-Output "Attaching original NIC $($nic.Id) to new VM..."
+       	Add-AzVMNetworkInterface -VM $newVM -Id $nic.Id -ErrorAction Stop
+    }
+}
+
+Write-Output "Creating new VM from config..."
+New-AzVM -ResourceGroupName $vmRG -Location $vmLocation -VM $newVM -DisableBginfoExtension -ErrorAction Stop
+If ($vmTags) {
+    Write-Output "Setting the same tags as that of the original VM..."
+    Set-AzResource -ResourceId $newVM.Id -Tag $vmTags -Force
+}
+
+Write-Output "`nPlease check that new VM is working as expected and shut down the VM to save on costs."
 
 Write-Output "`n--- Script Completed ---"
