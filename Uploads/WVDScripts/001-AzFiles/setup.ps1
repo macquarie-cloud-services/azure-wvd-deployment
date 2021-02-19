@@ -43,22 +43,6 @@ Install-Module -Name PowershellGet -MinimumVersion 2.2.4.1 -Force
 
 Install-Module -Name Az.Accounts -Force -Verbose
 Install-Module -Name Az.Storage -Force -Verbose
-Install-Module -Name Az.Network -Force -Verbose
-Install-Module -Name Az.Resources -Force -Verbose
-Import-Module -Name AzFilesHybrid -Force -Verbose
-Import-Module -Name activedirectory -Force -Verbose
-
-# Find existing OU or create new one. Get path for OU from domain by splitting the domain name, to format DC=fabrikam,DC=com
-#$domain = $U.split('@')[1]
-#$DC = $domain.split('.')
-#foreach($name in $DC) {
-#    $path = $path + ',DC=' + $name
-#}
-#$path = $path.substring(1)
-#$ou = Get-ADOrganizationalUnit -Filter 'Name -like "Profiles Storage"'
-#if ($ou -eq $null) {
-#    New-ADOrganizationalUnit -name 'Profiles Storage' -path $path
-#}
 
 # Connect to Azure
 $Credential = New-Object System.Management.Automation.PsCredential($U, (ConvertTo-SecureString $P -AsPlainText -Force))
@@ -71,6 +55,11 @@ If ($profilestorage.AzureFilesIdentityBasedAuth.ActiveDirectoryProperties.Domain
     Write-Output "`nStorage Account $S already joined to domain $($profilestorage.AzureFilesIdentityBasedAuth.ActiveDirectoryProperties.DomainName)"
 }
 Else {
+    Write-Output "`nInstalling Az modules to support AzFilesHybrid module...
+    Install-Module -Name Az.Network -Force -Verbose
+    Install-Module -Name Az.Resources -Force -Verbose
+    Import-Module -Name AzFilesHybrid -Force -Verbose
+    
     Write-Output "`nJoining Storage Account $S to domain $($profilestorage.AzureFilesIdentityBasedAuth.ActiveDirectoryProperties.DomainName)"
     Join-AzStorageAccountForAuth -ResourceGroupName $RG -StorageAccountName $S -DomainAccountType 'ComputerAccount' -OverwriteExistingADObject
 }
