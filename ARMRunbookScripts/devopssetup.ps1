@@ -119,8 +119,8 @@ If ($galleryImageDef) {
     }
     write-output "`nSending webhook to initiate Shared Image Gallery image copy to gallery $sigGalleryName ..."
     Invoke-WebRequest -UseBasicParsing -Body (ConvertTo-Json -Compress -InputObject $payload) -Method Post -Uri $webhookURI
-    write-output "Starting 15 minutes of sleep to allow for image to replicate to gallery. Average time to complete is 15-30 minutes but may take up to 90 minutes during busy periods."
-    start-sleep -Seconds 900
+    write-output "Starting 5 minutes of sleep to allow for image to replicate to gallery. Average time to complete is 15-30 minutes but may take up to 90 minutes during busy periods."
+    start-sleep -Seconds 300
     # Check provisioning status of image
     $sigProvStatus = (Get-AzGalleryImageVersion -GalleryName $sigGalleryName -ResourceGroupName $ResourceGroupName -GalleryImageDefinitionName $galleryImageDef -ExpandReplicationStatus).ProvisioningState
     $timer = 0
@@ -131,6 +131,11 @@ If ($galleryImageDef) {
 	    write-error "`nTime limit exceeded. Provisioning state is $sigProvStatus. Exiting script."
 	    exit
 	}
+	if ($sigProvStatus -eq "failed") {
+            write-error "`nProvisioning failed. Status shown below. Exiting script."
+            Get-AzGalleryImageVersion -GalleryName $sigGalleryName -ResourceGroupName $ResourceGroupName -GalleryImageDefinitionName $galleryImageDef -ExpandReplicationStatus
+            exit
+        }
 	write-output "Image still replicating. Will check every 5 minutes..."
     	start-sleep -Seconds 300
 	$sigProvStatus = (Get-AzGalleryImageVersion -GalleryName $sigGalleryName -ResourceGroupName $ResourceGroupName -GalleryImageDefinitionName $galleryImageDef -ExpandReplicationStatus).ProvisioningState
@@ -145,6 +150,11 @@ If ($galleryImageDef) {
 	    write-error "`nTime limit exceeded. Replication state is $sigReplStatus. Exiting script."
 	    exit
 	}
+	if ($sigReplStatus -eq "failed") {
+            write-error "`nReplication failed. Status shown below. Exiting script."
+            Get-AzGalleryImageVersion -GalleryName $sigGalleryName -ResourceGroupName $ResourceGroupName -GalleryImageDefinitionName $galleryImageDef -ExpandReplicationStatus
+            exit
+        }
     	start-sleep -Seconds 60
 	$sigReplStatus = (Get-AzGalleryImageVersion -GalleryName $sigGalleryName -ResourceGroupName $ResourceGroupName -GalleryImageDefinitionName $galleryImageDef -ExpandReplicationStatus).ReplicationStatus.AggregatedState
     }
