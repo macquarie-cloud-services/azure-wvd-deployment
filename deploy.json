@@ -127,26 +127,14 @@
                 "description": "Premium FileStorage Quota in Gb."
             }
         },
-        "optionalGalleryImageDef": {
+        "galleryImageDef": {
             "type": "string",
             "metadata": {
                 "description": "Shared Image Gallery Image Definition. eg. win10-o365-images"
             },
             "allowedValues": [
-                " ",
                 "win10-20h2-o365-images",
                 "win10-20h2-images"
-            ]
-        },
-        "optionalGalleryImageVersion": {
-            "type": "string",
-            "metadata": {
-                "description": "Shared Image Gallery Image version. eg. 1.0.0"
-            },
-            "allowedValues": [
-                " ",
-                "win10-20h2-o365-0.24608.50858",
-                "win10-20h2-0.24611.39286"
             ]
         },
         "optionalNotificationEmail": {
@@ -177,9 +165,8 @@
         "useAvailabilityZone": "[parameters('useAvailabilityZone')]",
         "storageAccountSku": "[parameters('storageAccountSku')]",
         "sigGalleryName": "[concat(parameters('customerName'),'wvdsig01')]",
-        "galleryImageDef": "[parameters('optionalGalleryImageDef')]",
-        "galleryImageVersion": "[last(split(parameters('optionalGalleryImageVersion'),'-'))]",
-        "customImageReferenceId": "[concat(subscription().id, '/resourceGroups/', resourcegroup().name, '/providers/Microsoft.Compute/galleries/', variables('sigGalleryName'), '/images/', variables('galleryImageDef'), '/versions/', variables('galleryImageVersion'))]",
+        "galleryImageDef": "[parameters('galleryImageDef')]",
+        "customImageReferenceId": "[concat(subscription().id, '/resourceGroups/', resourcegroup().name, '/providers/Microsoft.Compute/galleries/', variables('sigGalleryName'), '/images/', variables('galleryImageDef'))]",
         "varCustomImageReferenceId": "[concat('\"',variables('customImageReferenceId'),'\"')]",
         "varEmpty": "[concat('\"','\"')]",
         "identityName": "WVDServicePrincipal",
@@ -255,12 +242,8 @@
                 "value": "[concat('\"',variables('galleryImageDef'),'\"')]"
             },
             {
-                "name": "galleryImageVersion",
-                "value": "[concat('\"',variables('galleryImageVersion'),'\"')]"
-            },
-            {
                 "name": "customImageReferenceId",
-                "value": "[if(not(empty(parameters('optionalGalleryImageDef'))), variables('varCustomImageReferenceId'), variables('varEmpty'))]"
+                "value": "[if(not(empty(parameters('galleryImageDef'))), variables('varCustomImageReferenceId'), variables('varEmpty'))]"
             },
             {
                 "name": "fileURI",
