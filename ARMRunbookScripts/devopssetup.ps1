@@ -150,7 +150,13 @@ If ($galleryImageDef) {
     }
     write-output "`nImage replication complete. Setting Image Version number in Automation variable for image maintenance purposes..."
     $galleryImageVersion = (Get-AzGalleryImageVersion -GalleryName $sigGalleryName -ResourceGroupName $ResourceGroupName -GalleryImageDefinitionName $galleryImageDef).Name
-    Set-AutomationVariable -Name 'galleryImageVersion' -Value $galleryImageVersion
+    if (Get-AutomationVariable -Name '$galleryImageVersion' -ErrorAction SilentlyContinue) {
+    	# Update automation variable if exist otherwise create a new variable
+    	Set-AutomationVariable -Name 'galleryImageVersion' -Value $galleryImageVersion
+    }
+    else {
+    	New-AutomationVariable -Name 'galleryImageVersion' -Value $galleryImageVersion
+    }
 }
 
 # Get token for web request authorization
