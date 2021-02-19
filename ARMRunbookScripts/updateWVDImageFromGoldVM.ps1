@@ -216,6 +216,7 @@ Foreach ($nic in $vm.NetworkProfile.NetworkInterfaces) {
 
 Write-Output "Creating new VM from config..."
 $newVM = New-AzVM -ResourceGroupName $vmRG -Location $vmLocation -VM $newVMConf -DisableBginfoExtension -ErrorAction Stop
+Write-Output $newVM | fl
 If ($vmTags) {
     Write-Output "Setting the same tags as that of the original VM..."
     Set-AzResource -ResourceId $newVM.Id -Tag $vmTags -Force
