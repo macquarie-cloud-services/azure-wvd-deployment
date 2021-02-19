@@ -54,7 +54,7 @@ $notificationEmail = Get-AutomationVariable -Name 'notificationEmail'
 $FileNames = "msft-wvd-saas-api.zip,msft-wvd-saas-web.zip,AzureModules.zip"
 $SplitFilenames = $FileNames.split(",")
 foreach($Filename in $SplitFilenames){
-   Invoke-WebRequest -Uri "$fileURI/ARMRunbookScripts/static/$Filename" -OutFile "C:\$Filename"
+	Invoke-WebRequest -Uri "$fileURI/ARMRunbookScripts/static/$Filename" -OutFile "C:\$Filename"
 }
 
 #New-Item -Path "C:\msft-wvd-saas-offering" -ItemType directory -Force -ErrorAction SilentlyContinue
@@ -101,72 +101,74 @@ Select-AzSubscription -SubscriptionId $SubscriptionId
 
 # Get the context
 $context = Get-AzContext
-if ($context -eq $null)
-{
+if ($context -eq $null) {
 	Write-Error "Please authenticate to Azure & Azure AD using Login-AzAccount and Connect-AzureAD cmdlets and then run this script"
 	exit
 }
 
 If ($galleryImageDef) {
-    # Custom image specified. This will copy the specified image from the MCS Shared Image Gallery to the local Gallery.
-    $webhookURI = "https://7a4033cc-74d4-4c27-a5e8-399fc47e1eb5.webhook.ase.azure-automation.net/webhooks?token=%2fBQoUQT8f9l7vtcjuPmsXkI3ZY0a5ds13rol6PK1ItA%3d"
-    $payload = @{
-	  "subscriptionId" = $SubscriptionId
-	  "location" = $location
-	  "sigGalleryName" = $sigGalleryName
-	  "resourceGroupName" = $ResourceGroupName
-	  "galleryImageDef" = $galleryImageDef
-    }
-    write-output "`nSending webhook to initiate Shared Image Gallery image copy to gallery $sigGalleryName ..."
-    Invoke-WebRequest -UseBasicParsing -Body (ConvertTo-Json -Compress -InputObject $payload) -Method Post -Uri $webhookURI
-    write-output "Starting 5 minutes of sleep to allow for image to replicate to gallery. Average time to complete is 15-30 minutes but may take up to 90 minutes during busy periods."
-    start-sleep -Seconds 300
-    # Check provisioning status of image
-    $sigProvStatus = (Get-AzGalleryImageVersion -GalleryName $sigGalleryName -ResourceGroupName $ResourceGroupName -GalleryImageDefinitionName $galleryImageDef -ExpandReplicationStatus).ProvisioningState
-    $timer = 0
-    while ($sigProvStatus -ne "Succeeded") {
-	# Set timer to avoid continuous loop
-	$timer = $timer + 1
-	if ($timer -eq 20) {
-	    write-error "`nTime limit exceeded. Provisioning state is $sigProvStatus. Exiting script."
-	    exit
-	}
-	if ($sigProvStatus -eq "failed") {
-            write-error "`nProvisioning failed. Status shown below. Exiting script."
-            Get-AzGalleryImageVersion -GalleryName $sigGalleryName -ResourceGroupName $ResourceGroupName -GalleryImageDefinitionName $galleryImageDef -ExpandReplicationStatus
-            exit
-        }
-	write-output "Image still replicating. Will check every 5 minutes..."
+    	# Custom image specified. This will copy the specified image from the MCS Shared Image Gallery to the local Gallery.
+    	$webhookURI = "https://7a4033cc-74d4-4c27-a5e8-399fc47e1eb5.webhook.ase.azure-automation.net/webhooks?token=%2fBQoUQT8f9l7vtcjuPmsXkI3ZY0a5ds13rol6PK1ItA%3d"
+    	$payload = @{
+	  	"subscriptionId" = $SubscriptionId
+	  	"location" = $location
+	  	"sigGalleryName" = $sigGalleryName
+	  	"resourceGroupName" = $ResourceGroupName
+	  	"galleryImageDef" = $galleryImageDef
+    	}
+    	write-output "`nSending webhook to initiate Shared Image Gallery image copy to gallery $sigGalleryName ..."
+    	Invoke-WebRequest -UseBasicParsing -Body (ConvertTo-Json -Compress -InputObject $payload) -Method Post -Uri $webhookURI
+    	write-output "Starting 5 minutes of sleep to allow for image to replicate to gallery. Average time to complete is 15-30 minutes but may take up to 90 minutes during busy periods."
     	start-sleep -Seconds 300
-	$sigProvStatus = (Get-AzGalleryImageVersion -GalleryName $sigGalleryName -ResourceGroupName $ResourceGroupName -GalleryImageDefinitionName $galleryImageDef -ExpandReplicationStatus).ProvisioningState
-    }
-    # Check replication status of image after provisioning is completed
-    $sigReplStatus = (Get-AzGalleryImageVersion -GalleryName $sigGalleryName -ResourceGroupName $ResourceGroupName -GalleryImageDefinitionName $galleryImageDef -ExpandReplicationStatus).ReplicationStatus.AggregatedState
-    $timer = 0
-    while ($sigReplStatus -ne "Completed") {
-	# Set timer to avoid continuous loop
-	$timer = $timer + 1
-	if ($timer -eq 30) {
-	    write-error "`nTime limit exceeded. Replication state is $sigReplStatus. Exiting script."
-	    exit
-	}
-	if ($sigReplStatus -eq "failed") {
-            write-error "`nReplication failed. Status shown below. Exiting script."
-            Get-AzGalleryImageVersion -GalleryName $sigGalleryName -ResourceGroupName $ResourceGroupName -GalleryImageDefinitionName $galleryImageDef -ExpandReplicationStatus
-            exit
-        }
-    	start-sleep -Seconds 60
-	$sigReplStatus = (Get-AzGalleryImageVersion -GalleryName $sigGalleryName -ResourceGroupName $ResourceGroupName -GalleryImageDefinitionName $galleryImageDef -ExpandReplicationStatus).ReplicationStatus.AggregatedState
-    }
-    write-output "`nImage replication complete. Setting Image Version number in Automation variable for image maintenance purposes..."
-    $galleryImageVersion = (Get-AzGalleryImageVersion -GalleryName $sigGalleryName -ResourceGroupName $ResourceGroupName -GalleryImageDefinitionName $galleryImageDef).Name
-    if (Get-AutomationVariable -Name '$galleryImageVersion' -ErrorAction SilentlyContinue) {
-    	# Update automation variable if exist otherwise create a new variable
-    	Set-AutomationVariable -Name 'galleryImageVersion' -Value $galleryImageVersion
-    }
-    else {
-    	New-AutomationVariable -Name 'galleryImageVersion' -Value $galleryImageVersion
-    }
+    	# Check provisioning status of image
+    	$sigProvStatus = (Get-AzGalleryImageVersion -GalleryName $sigGalleryName -ResourceGroupName $ResourceGroupName -GalleryImageDefinitionName $galleryImageDef -ExpandReplicationStatus).ProvisioningState
+    	$timer = 0
+    	while ($sigProvStatus -ne "Succeeded") {
+		# Set timer to avoid continuous loop
+		$timer = $timer + 1
+		if ($timer -eq 20) {
+	    		write-error "`nTime limit exceeded. Provisioning state is $sigProvStatus. Exiting script."
+	    		exit
+		}
+		if ($sigProvStatus -eq "failed") {
+	    		write-error "`nProvisioning failed. Status shown below. Exiting script."
+	    		Get-AzGalleryImageVersion -GalleryName $sigGalleryName -ResourceGroupName $ResourceGroupName -GalleryImageDefinitionName $galleryImageDef -ExpandReplicationStatus
+	    		exit
+		}
+		write-output "Image still provisioning. Will check every 5 minutes..."
+		start-sleep -Seconds 300
+		$sigProvStatus = (Get-AzGalleryImageVersion -GalleryName $sigGalleryName -ResourceGroupName $ResourceGroupName -GalleryImageDefinitionName $galleryImageDef -ExpandReplicationStatus).ProvisioningState
+    	}
+
+    	# Check replication status of image after provisioning is completed
+    	write-output "`nImage provisioning completed. Checking Replication Status..."
+	$galleryImgId = (Get-AzGalleryImageVersion -GalleryName contosowvdsig01 -ResourceGroupName contoso-ae-wvd-rg -GalleryImageDefinitionName win10-20h2-o365-images -ExpandReplicationStatus).Id
+    	$sigReplStatus = (Get-AzGalleryImageVersion -ResourceId $galleryImgId -ExpandReplicationStatus).ReplicationStatus.AggregatedState
+    	$timer = 0
+    	while ($sigReplStatus -ne "Completed") {
+		# Set timer to avoid continuous loop
+		$timer = $timer + 1
+		if ($timer -eq 30) {
+	    		write-error "`nTime limit exceeded. Replication state is $sigReplStatus. Exiting script."
+	    		exit
+		}
+		if ($sigReplStatus -eq "failed") {
+            		write-error "`nReplication failed. Status shown below. Exiting script."
+            		Get-AzGalleryImageVersion -ResourceId $galleryImgId -ExpandReplicationStatus
+            		exit
+        	}
+    		start-sleep -Seconds 60
+		$sigReplStatus = (Get-AzGalleryImageVersion -ResourceId $galleryImgId -ExpandReplicationStatus).ReplicationStatus.AggregatedState
+    	}
+    	write-output "`nImage replication complete. Setting Image Version number in Automation variable for image maintenance purposes..."
+   	$galleryImageVersion = (Get-AzGalleryImageVersion -ResourceId $galleryImgId).Name
+	if (Get-AutomationVariable -Name '$galleryImageVersion' -ErrorAction SilentlyContinue) {
+    		# Update automation variable if exist otherwise create a new variable
+    		Set-AutomationVariable -Name 'galleryImageVersion' -Value $galleryImageVersion
+   	}
+    	else {
+    		New-AutomationVariable -Name 'galleryImageVersion' -Value $galleryImageVersion
+    	}
 }
 
 # Get token for web request authorization
@@ -283,42 +285,42 @@ $domainName = $split[1]
 
 # In case Azure AD DS is used, create a new user here, and assign it to the targetGroup. The principalID of this group will then be used.
 if ($identityApproach -eq 'Azure AD DS') {
-  $url = $($fileURI + "/Modules/ARM/UserCreation/Parameters/users.parameters.json")
-  Invoke-WebRequest -Uri $url -OutFile "C:\users.parameters.json"
-  $ConfigurationJson = Get-Content -Path "C:\users.parameters.json" -Raw -ErrorAction 'Stop'
+  	$url = $($fileURI + "/Modules/ARM/UserCreation/Parameters/users.parameters.json")
+  	Invoke-WebRequest -Uri $url -OutFile "C:\users.parameters.json"
+ 	$ConfigurationJson = Get-Content -Path "C:\users.parameters.json" -Raw -ErrorAction 'Stop'
 
-  try { $UserConfig = $ConfigurationJson | ConvertFrom-Json -ErrorAction 'Stop' }
-  catch {
-    Write-Error "Configuration JSON content could not be converted to a PowerShell object" -ErrorAction 'Stop'
-  }
+  	try { $UserConfig = $ConfigurationJson | ConvertFrom-Json -ErrorAction 'Stop' }
+  	catch {
+    		Write-Error "Configuration JSON content could not be converted to a PowerShell object" -ErrorAction 'Stop'
+  	}
 
-  $userPassword = $orgName.substring(13) + '!'
-  foreach ($config in $UserConfig.userconfig) {
-    $userName = $config.userName
-    $upn = $($userName + "@" + $domainName)
-      if ($config.createGroup) { New-AzADGroup -DisplayName "$targetGroup" -MailNickname "$targetGroup" }
-      if ($config.createUser) { New-AzADUser -UserPrincipalName $upn -DisplayName "$userName" -MailNickname $userName -Password (convertto-securestring $userPassword -AsPlainText -Force) }
-      if ($config.assignUsers) { Add-AzADGroupMember -MemberUserPrincipalName  $upn -TargetGroupDisplayName $targetGroup }
-      Start-Sleep -Seconds 1
-  }
+  	$userPassword = $orgName.substring(13) + '!'
+  	foreach ($config in $UserConfig.userconfig) {
+    		$userName = $config.userName
+    		$upn = $($userName + "@" + $domainName)
+      		if ($config.createGroup) { New-AzADGroup -DisplayName "$targetGroup" -MailNickname "$targetGroup" }
+      		if ($config.createUser) { New-AzADUser -UserPrincipalName $upn -DisplayName "$userName" -MailNickname $userName -Password (convertto-securestring $userPassword -AsPlainText -Force) }
+      		if ($config.assignUsers) { Add-AzADGroupMember -MemberUserPrincipalName  $upn -TargetGroupDisplayName $targetGroup }
+      		Start-Sleep -Seconds 1
+  	}
 }
 
 # In case of using AD, and ADSync didn't work in user creation, this block will allow for the regular sync cycle to sync the group to Azure instead
 Write-Output "Fetching test user group $targetGroup. In case of using AD, this can take up to 30 minutes..."
 $currentTry = 0
 if ($identityApproach -eq "AD") {
-  do {
-      $principalIds = (Get-AzureADGroup -SearchString $targetGroup).objectId
-      $currentTry++
-      Start-Sleep -Seconds 10
-  } while ($currentTry -le 180 -and ($principalIds -eq $null))
+  	do {
+     		$principalIds = (Get-AzureADGroup -SearchString $targetGroup).objectId
+      		$currentTry++
+      		Start-Sleep -Seconds 10
+  	} while ($currentTry -le 180 -and ($principalIds -eq $null))
 }
 
 # In both AD and Azure AD DS case, the user group should now exist in Azure. Throw an error of the group is not found.
 $principalIds = (Get-AzureADGroup -SearchString $targetGroup).objectId
 if ($principalIds -eq $null) {
-  Write-Error "Did not find user group $targetGroup. Please check if the user group creation completed successfully."
-  throw "Did not find user group $targetGroup. Please check if the user group creation completed successfully."
+  	Write-Error "Did not find user group $targetGroup. Please check if the user group creation completed successfully."
+  	throw "Did not find user group $targetGroup. Please check if the user group creation completed successfully."
 }
 
 # In case the above search finds multiple groups, pick the first PrincipalId. Template only works when one principalId is supplied, not for multiple.
@@ -330,9 +332,9 @@ Write-Output "Found user group $targetGroup with principal Id $principalIds"
 if ($identityApproach -eq "AD") {
 	$VMCustomScriptExtension = Get-AzVMCustomScriptExtension -ResourceGroupName $virtualNetworkResourceGroupName -VMName $computerName -Name "userCreation"
 	if ($VMCustomScriptExtension -ne $null) {
-	  Write-Output "In case AD is used, removing the userCreation CSE from domain controller VM..."
-	  Remove-AzVMCustomScriptExtension -ResourceGroupName $virtualNetworkResourceGroupName -VMName $computerName -Name "userCreation" -Force
-	  Write-Output "userCreation CSE removed."
+	  	Write-Output "In case AD is used, removing the userCreation CSE from domain controller VM..."
+	  	Remove-AzVMCustomScriptExtension -ResourceGroupName $virtualNetworkResourceGroupName -VMName $computerName -Name "userCreation" -Force
+	  	Write-Output "userCreation CSE removed."
 	}
 }
 
@@ -343,14 +345,14 @@ write-output $url
 # It is possible at this point that the push has not completed yet. Logic below allows for 1 minute of waiting before timing out. 
 $currentTry = 0
 do {
-    Start-Sleep -Seconds 2
-    $response = Invoke-RestMethod -Uri $url -Headers @{Authorization = "Basic $token"} -Method Get
-    write-output $response
-    $currentTry++
+    	Start-Sleep -Seconds 2
+    	$response = Invoke-RestMethod -Uri $url -Headers @{Authorization = "Basic $token"} -Method Get
+    	write-output $response
+    	$currentTry++
 } while ($currentTry -le 30 -and ($response.value.ObjectId -eq $null))
 
 if ($response.value.ObjectId -eq $null) {
-  throw "Pushing repository to DevOps timed out. Please try again later."
+  	throw "Pushing repository to DevOps timed out. Please try again later."
 }
 
 # Parse user input into the template variables file and the deployment parameter file and commit them to the devops repo
