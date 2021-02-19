@@ -163,7 +163,7 @@ $job = $imageVersion = New-AzGalleryImageVersion `
    -Location $vmLocation `
    -TargetRegion $targetRegions `
    -SourceImageId $managedImage.Id.ToString() `
-   -PublishingProfileEndOfLifeDate $imgExpiry.ToString() `
+   -PublishingProfileEndOfLifeDate $imgExpiry `
    -AsJob
 
 Write-Output $job | fl
