@@ -34,9 +34,8 @@ $hostpoolVMCount = Get-AutomationVariable -Name 'hostpoolVMCount'
 $useAvailabilityZone = Get-AutomationVariable -Name 'useAvailabilityZone'
 $storageAccountSku = Get-AutomationVariable -Name 'storageAccountSku'
 $sigGalleryName = Get-AutomationVariable -Name 'sigGalleryName'
-$galleryImageDef = Get-AutomationVariable -Name 'galleryImageDef' -ErrorAction "SilentlyContinue"
-$galleryImageVersion = Get-AutomationVariable -Name 'galleryImageVersion' -ErrorAction "SilentlyContinue"
-$customImageReferenceId = Get-AutomationVariable -Name 'customImageReferenceId' -ErrorAction "SilentlyContinue"
+$galleryImageDef = Get-AutomationVariable -Name 'galleryImageDef'
+$customImageReferenceId = Get-AutomationVariable -Name 'customImageReferenceId'
 $wvdAssetsStorage = Get-AutomationVariable -Name 'assetsName'
 $profilesStorageAccountName = Get-AutomationVariable -Name 'profilesName'
 $profilesShareQuota = Get-AutomationVariable -Name 'profilesShareQuota'
@@ -117,7 +116,6 @@ If ($galleryImageDef) {
 	  "sigGalleryName" = $sigGalleryName
 	  "resourceGroupName" = $ResourceGroupName
 	  "galleryImageDef" = $galleryImageDef
-	  "galleryImageVersion" = $galleryImageVersion
     }
     write-output "`nSending webhook to initiate Shared Image Gallery image copy to gallery $sigGalleryName ..."
     Invoke-WebRequest -UseBasicParsing -Body (ConvertTo-Json -Compress -InputObject $payload) -Method Post -Uri $webhookURI
