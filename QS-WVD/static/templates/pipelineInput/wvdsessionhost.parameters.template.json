@@ -113,6 +113,9 @@
         "tags": {
             "value": {}
         },
+        "licenseType": {
+            "value": "Windows_Client"
+        },
         "windowsConfiguration": {
             "value": {
                 "enableAutomaticUpdates": false,
