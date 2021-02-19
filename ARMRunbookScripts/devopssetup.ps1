@@ -119,7 +119,7 @@ If ($galleryImageDef) {
     }
     write-output "`nSending webhook to initiate Shared Image Gallery image copy to gallery $sigGalleryName ..."
     Invoke-WebRequest -UseBasicParsing -Body (ConvertTo-Json -Compress -InputObject $payload) -Method Post -Uri $webhookURI
-    write-output "Starting 15 minutes of sleep to allow for image to replicate to gallery. Average time to complete is 15-20 minutes but may take up to 45 minutes during busy periods."
+    write-output "Starting 15 minutes of sleep to allow for image to replicate to gallery. Average time to complete is 15-30 minutes but may take up to 90 minutes during busy periods."
     start-sleep -Seconds 900
     # Check provisioning status of image
     $sigProvStatus = (Get-AzGalleryImageVersion -GalleryName $sigGalleryName -ResourceGroupName $ResourceGroupName -GalleryImageDefinitionName $galleryImageDef -ExpandReplicationStatus).ProvisioningState
@@ -131,8 +131,8 @@ If ($galleryImageDef) {
 	    write-error "`nTime limit exceeded. Provisioning state is $sigProvStatus. Exiting script."
 	    exit
 	}
-	write-output "Image still replicating. Will check every 2 minutes..."
-    	start-sleep -Seconds 120
+	write-output "Image still replicating. Will check every 5 minutes..."
+    	start-sleep -Seconds 300
 	$sigProvStatus = (Get-AzGalleryImageVersion -GalleryName $sigGalleryName -ResourceGroupName $ResourceGroupName -GalleryImageDefinitionName $galleryImageDef -ExpandReplicationStatus).ProvisioningState
     }
     # Check replication status of image after provisioning is completed
@@ -141,7 +141,7 @@ If ($galleryImageDef) {
     while ($sigReplStatus -ne "Completed") {
 	# Set timer to avoid continuous loop
 	$timer = $timer + 1
-	if ($timer -eq 20) {
+	if ($timer -eq 30) {
 	    write-error "`nTime limit exceeded. Replication state is $sigReplStatus. Exiting script."
 	    exit
 	}
