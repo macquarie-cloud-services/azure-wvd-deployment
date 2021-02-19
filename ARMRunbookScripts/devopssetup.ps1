@@ -122,7 +122,7 @@ If ($galleryImageDef) {
     write-output "Starting 15 minutes of sleep to allow for image to replicate to gallery. Average time to complete is 15-20 minutes but may take up to 45 minutes during busy periods."
     start-sleep -Seconds 900
     # Check provisioning status of image
-    $sigProvStatus = (Get-AzGalleryImageVersion -ResourceId $customImageReferenceId -ExpandReplicationStatus).ProvisioningState
+    $sigProvStatus = (Get-AzGalleryImageVersion -GalleryName $sigGalleryName -ResourceGroupName $ResourceGroupName -GalleryImageDefinitionName $galleryImageDef -ExpandReplicationStatus).ProvisioningState
     $timer = 0
     while ($sigProvStatus -ne "Succeeded") {
 	# Set timer to avoid continuous loop
@@ -133,10 +133,10 @@ If ($galleryImageDef) {
 	}
 	write-output "Image still replicating. Will check every 2 minutes..."
     	start-sleep -Seconds 120
-	$sigProvStatus = (Get-AzGalleryImageVersion -ResourceId $customImageReferenceId -ExpandReplicationStatus).ProvisioningState
+	$sigProvStatus = (Get-AzGalleryImageVersion -GalleryName $sigGalleryName -ResourceGroupName $ResourceGroupName -GalleryImageDefinitionName $galleryImageDef -ExpandReplicationStatus).ProvisioningState
     }
     # Check replication status of image after provisioning is completed
-    $sigReplStatus = (Get-AzGalleryImageVersion -ResourceId $customImageReferenceId -ExpandReplicationStatus).ReplicationStatus.AggregatedState
+    $sigReplStatus = (Get-AzGalleryImageVersion -GalleryName $sigGalleryName -ResourceGroupName $ResourceGroupName -GalleryImageDefinitionName $galleryImageDef -ExpandReplicationStatus).ReplicationStatus.AggregatedState
     $timer = 0
     while ($sigReplStatus -ne "Completed") {
 	# Set timer to avoid continuous loop
@@ -146,7 +146,7 @@ If ($galleryImageDef) {
 	    exit
 	}
     	start-sleep -Seconds 60
-	$sigReplStatus = (Get-AzGalleryImageVersion -ResourceId $customImageReferenceId -ExpandReplicationStatus).ReplicationStatus.AggregatedState
+	$sigReplStatus = (Get-AzGalleryImageVersion -GalleryName $sigGalleryName -ResourceGroupName $ResourceGroupName -GalleryImageDefinitionName $galleryImageDef -ExpandReplicationStatus).ReplicationStatus.AggregatedState
     }    
 }
 
@@ -380,8 +380,6 @@ $parameters = $parameters.Replace("[vmNamePrefix]", $vmNamePrefix)
 $parameters = $parameters.Replace("[hostpoolname]", $hostpoolname)
 $parameters = $parameters.Replace("[hostpoolVMSize]", $hostpoolVMSize)
 $parameters = $parameters.Replace("[storageAccountSku]", $storageAccountSku)
-$parameters = $parameters.Replace("[sigGalleryName]", $sigGalleryName)
-$parameters = $parameters.Replace("[customImageReferenceId]", $customImageReferenceId)
 $parameters = $parameters.Replace("[assetsName]", $wvdAssetsStorage)
 $parameters = $parameters.Replace("[profilesName]", $profilesStorageAccountName)
 $parameters = $parameters.Replace("[profilesShareQuota]", $profilesShareQuota)
