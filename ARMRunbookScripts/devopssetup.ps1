@@ -167,7 +167,7 @@ If ($galleryImageDef) {
     		Set-AutomationVariable -Name 'galleryImageVersion' -Value $galleryImageVersion
    	}
     	else {
-    		New-AutomationVariable -Name 'galleryImageVersion' -Value $galleryImageVersion
+    		New-AzAutomationVariable -AutomationAccountName $AutomationAccountName -Name 'galleryImageVersion' -Encrypted $False -Value $galleryImageVersion -ResourceGroupName $ResourceGroupName
     	}
 }
 
