@@ -55,7 +55,7 @@ If ($profilestorage.AzureFilesIdentityBasedAuth.ActiveDirectoryProperties.Domain
     Write-Output "`nStorage Account $S already joined to domain $($profilestorage.AzureFilesIdentityBasedAuth.ActiveDirectoryProperties.DomainName)"
 }
 Else {
-    Write-Output "`nInstalling Az modules to support AzFilesHybrid module...
+    Write-Output "`nInstalling Az modules to support AzFilesHybrid module..."
     Install-Module -Name Az.Network -Force -Verbose
     Install-Module -Name Az.Resources -Force -Verbose
     Import-Module -Name AzFilesHybrid -Force -Verbose
