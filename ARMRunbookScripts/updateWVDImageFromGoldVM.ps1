@@ -63,8 +63,15 @@ $snapshotName = $osDiskName + "_presysprep_" + (Get-Date -UFormat %Y%m%d%R | For
 $vmStatus = (Get-AzVM -Name $vmName -Resourcegroup $vmRG -Status).Statuses[1].Code
 If ($vmStatus -notmatch "stopped") {
     Write-Output "`nStopping VM $vmName to take disk snapshot..."
-    Stop-AzVM -Name $vmName -Resourcegroup $vmRG -Force -StayProvisioned        
+    Stop-AzVM -Name $vmName -Resourcegroup $vmRG -Force -StayProvisioned
+    $timer = 0    
     while ($vmStatus -notmatch "stopped") {
+        # Set timer to avoid continuous loop
+		$timer = $timer + 1
+		if ($timer -eq 20) {
+	    	write-error "`nTime limit exceeded. Provisioning state is $sigProvStatus. Exiting script."
+	    	exit
+		}
         Write-Output "`nWaiting 30 seconds for VM to be stopped."
         Start-Sleep 30
         $vmStatus = (Get-AzVM -Name $vmName -Resourcegroup $vmRG -Status).Statuses[1].Code
@@ -86,27 +93,43 @@ Else {
 # Start VM after disk snapshot created to run sysprep on VM
 Write-Output "`nStarting VM $vmName to perform sysprep..."
 Start-AzVM -Name $vmName -Resourcegroup $vmRG
+$timer = 0
 while ($vmStatus -notmatch "running") {
+    # Set timer to avoid continuous loop
+    $timer = $timer + 1
+    if ($timer -eq 10) {
+            write-error "`nTime limit exceeded. Provisioning state is $sigProvStatus. Exiting script."
+            exit
+    }
     Write-Output "`nWaiting 60 seconds for VM to start."
     Start-Sleep 60
     $vmStatus = (Get-AzVM -Name $vmName -Resourcegroup $vmRG -Status).Statuses[1].Code
 }
 
 # Run sysprep on the Gold VM
-$scriptURI = 'https://raw.githubusercontent.com/macquarie-cloud-services/azure-wvd-deployment/master/ARMRunbookScripts/sysprep.ps1'
 Write-Output "`nRunning sysprep command on $vmName via Custom Script Extension, now waiting until the vm is stopped."
-Set-AzVMCustomScriptExtension `
-    -FileUri $ScriptURI `
-    -ResourceGroupName $vmRG `
+$fileUri = @("https://raw.githubusercontent.com/macquarie-cloud-services/azure-wvd-deployment/master/ARMRunbookScripts/sysprep.ps1")
+$settings = @{"fileUris" = $fileUri};
+$protectedSettings = @{"commandToExecute" = "powershell -ExecutionPolicy Unrestricted -File sysprep.ps1"};
+Set-AzVMExtension -ResourceGroupName $vmRG `
+    -Location $vmLocation `
     -VMName $vmName `
     -Name "runSysprep" `
-    -Location $vmLocation `
-    -run './sysprep.ps1' `
-    -Argument '-runSysprep'
-$vm | Update-AzVM
+    -Publisher "Microsoft.Compute" `
+    -ExtensionType "CustomScriptExtension" `
+    -TypeHandlerVersion "1.10" `
+    -Settings $settings `
+    -ProtectedSettings $protectedSettings;
 
 $vmStatus = (Get-AzVM -Name $vmName -Resourcegroup $vmRG -Status).Statuses[1].Code
+$timer = 0
 while ($vmStatus -notmatch "stopped") {
+    # Set timer to avoid continuous loop
+    $timer = $timer + 1
+    if ($timer -eq 20) {
+        write-error "`nTime limit exceeded. Provisioning state is $sigProvStatus. Exiting script."
+        exit
+    }
     Write-Output "`nWaiting 60 seconds for VM to be stopped."
     Start-Sleep 60
     $vmStatus = (Get-AzVM -Name $vmName -Resourcegroup $vmRG -Status).Statuses[1].Code
@@ -116,7 +139,14 @@ while ($vmStatus -notmatch "stopped") {
 Write-Output "`nVM stopped. Deallocating VM."
 Stop-AzVM -Name $vmName -Resourcegroup $vmRG -Force
 $vmStatus = (Get-AzVM -Name $vmName -Resourcegroup $vmRG -Status).Statuses[1].Code
+$timer = 0
 while ($vmStatus -notmatch "deallocated") {
+    # Set timer to avoid continuous loop
+    $timer = $timer + 1
+    if ($timer -eq 20) {
+        write-error "`nTime limit exceeded. Provisioning state is $sigProvStatus. Exiting script."
+        exit
+    }
     Write-Output "`nWaiting 30 seconds for VM to be deallocated."
     Start-Sleep 30
     $vmStatus = (Get-AzVM -Name $vmName -Resourcegroup $vmRG -Status).Statuses[1].Code
