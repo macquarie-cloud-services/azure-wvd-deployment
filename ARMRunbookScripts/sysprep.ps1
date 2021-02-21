@@ -8,3 +8,4 @@ If (Test-Path -Path "C:\windows\Panther") {
 }
 Write-output "`nStarting Sysprep..."
 Start-Process -FilePath C:\Windows\System32\Sysprep\Sysprep.exe -ArgumentList '/generalize /oobe /shutdown /mode:vm' -Wait
+
