@@ -69,7 +69,7 @@ If ($vmStatus -notmatch "stopped") {
         # Set timer to avoid continuous loop
 		$timer = $timer + 1
 		if ($timer -eq 20) {
-	    	write-error "`nTime limit exceeded. Provisioning state is $sigProvStatus. Exiting script."
+	    	write-error "`nTime limit exceeded. Exiting script."
 	    	exit
 		}
         Write-Output "`nWaiting 30 seconds for VM to be stopped."
@@ -98,7 +98,7 @@ while ($vmStatus -notmatch "running") {
     # Set timer to avoid continuous loop
     $timer = $timer + 1
     if ($timer -eq 10) {
-            write-error "`nTime limit exceeded. Provisioning state is $sigProvStatus. Exiting script."
+            write-error "`nTime limit exceeded. Exiting script."
             exit
     }
     Write-Output "`nWaiting 60 seconds for VM to start."
@@ -127,7 +127,7 @@ while ($vmStatus -notmatch "stopped") {
     # Set timer to avoid continuous loop
     $timer = $timer + 1
     if ($timer -eq 20) {
-        write-error "`nTime limit exceeded. Provisioning state is $sigProvStatus. Exiting script."
+        write-error "`nTime limit exceeded. Exiting script."
         exit
     }
     Write-Output "`nWaiting 60 seconds for VM to be stopped."
@@ -144,7 +144,7 @@ while ($vmStatus -notmatch "deallocated") {
     # Set timer to avoid continuous loop
     $timer = $timer + 1
     if ($timer -eq 20) {
-        write-error "`nTime limit exceeded. Provisioning state is $sigProvStatus. Exiting script."
+        write-error "`nTime limit exceeded. Exiting script."
         exit
     }
     Write-Output "`nWaiting 30 seconds for VM to be deallocated."
