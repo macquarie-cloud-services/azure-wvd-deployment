@@ -142,7 +142,7 @@ If ($galleryImageDef) {
 
     	# Check replication status of image after provisioning is completed
     	write-output "`nImage provisioning completed. Checking Replication Status..."
-	$galleryImgId = (Get-AzGalleryImageVersion -GalleryName contosowvdsig01 -ResourceGroupName contoso-ae-wvd-rg -GalleryImageDefinitionName win10-20h2-o365-images -ExpandReplicationStatus).Id
+	$galleryImgId = (Get-AzGalleryImageVersion -GalleryName $sigGalleryName -ResourceGroupName $ResourceGroupName -GalleryImageDefinitionName $galleryImageDef -ExpandReplicationStatus).Id
     	$sigReplStatus = (Get-AzGalleryImageVersion -ResourceId $galleryImgId -ExpandReplicationStatus).ReplicationStatus.AggregatedState
     	$timer = 0
     	while ($sigReplStatus -ne "Completed") {
