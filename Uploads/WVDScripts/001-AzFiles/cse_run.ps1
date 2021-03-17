@@ -170,19 +170,7 @@ foreach ($config in $azfilesconfig.azfilesconfig) {
             # You can choose to create the identity that represents the storage account as either a Service Logon Account or Computer Account (default parameter value), depends on the AD permission you have and preference. 
             # Run Get-Help Join-AzStorageAccountForAuth for more details on this cmdlet.
 
-            LogInfo("Getting Windows Domain Netbios Name...")
-            $NTDomain = (Get-WmiObject Win32_NTDomain).DomainName
-            If (!$NTDomain) {
-                LogInfo("Error - Windows Netbios Domain Name NOT Found!!")
-                Exit
-            }
-            Else {
-                $NTDomain = $NTDomain.Trim()
-                LogInfo("Found Windows Domain Netbios Name $NTDomain")
-            }
-           
-            $domainJoinUser = $config.domainJoinUsername
-            $username = $NTDomain + "\" + $domainJoinUser
+            $username = $($config.domainName + "\" + $config.domainJoinUsername)
             $scriptPath = $($PSScriptRoot + "\setup.ps1")
             Set-Location $PSScriptRoot
 
