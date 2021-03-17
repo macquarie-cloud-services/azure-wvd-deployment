@@ -163,8 +163,12 @@ LogInfo("###############################")
 LogInfo("## 3 - Run WVD Optimizations ##")
 LogInfo("###############################")
 
-$split = $wvdoptimizationtoolconfig.wvdoptimizationtoolconfig.domainName.Split(".")
-$username = $($split[0] + "\" + $wvdoptimizationtoolconfig.wvdoptimizationtoolconfig.domainJoinUsername)
+$NTDomain = (Get-WmiObject Win32_NTDomain).DomainName
+If (!$NTDomain) {
+    Write-Error "Error - Windows Netbios Domain Name NOT Found!!"
+    Exit
+}
+$username = $($NTDomain + "\" + $wvdoptimizationtoolconfig.wvdoptimizationtoolconfig.domainJoinUsername)
 
 LogInfo("Using PSExec, set execution policy for the admin user")
 $scriptBlock = { .\psexec /accepteula -h -u $username -p $domainJoinPassword -c -f "powershell.exe" Set-ExecutionPolicy -ExecutionPolicy Unrestricted -Scope CurrentUser -Force }
