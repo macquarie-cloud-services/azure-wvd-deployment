@@ -175,7 +175,13 @@ foreach ($config in $azfilesconfig.azfilesconfig) {
                 Write-Error "Error - Windows Netbios Domain Name NOT Found!!"
                 Exit
             }
-            $username = $($NTDomain + "\" + $config.domainJoinUsername)
+            Else {
+                $NTDomain = $NTDomain.Trim()
+                LogInfo("Found Windows Domain Netbios Name $NTDomain")
+            }
+           
+            $domainJoinUser = $config.domainJoinUsername
+            $username = $NTDomain + "\" + $domainJoinUser
             $scriptPath = $($PSScriptRoot + "\setup.ps1")
             Set-Location $PSScriptRoot
 
