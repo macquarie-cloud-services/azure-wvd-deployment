@@ -168,7 +168,13 @@ If (!$NTDomain) {
     Write-Error "Error - Windows Netbios Domain Name NOT Found!!"
     Exit
 }
-$username = $($NTDomain + "\" + $wvdoptimizationtoolconfig.wvdoptimizationtoolconfig.domainJoinUsername)
+Else {
+    $NTDomain = $NTDomain.Trim()
+    LogInfo("Found Windows Domain Netbios Name $NTDomain")
+}
+           
+$domainJoinUser = $wvdoptimizationtoolconfig.wvdoptimizationtoolconfig.domainJoinUsername
+$username = $NTDomain + "\" + $domainJoinUser
 
 LogInfo("Using PSExec, set execution policy for the admin user")
 $scriptBlock = { .\psexec /accepteula -h -u $username -p $domainJoinPassword -c -f "powershell.exe" Set-ExecutionPolicy -ExecutionPolicy Unrestricted -Scope CurrentUser -Force }
