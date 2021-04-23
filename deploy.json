@@ -140,6 +140,12 @@
                 "description": "Premium FileStorage Quota in Gb."
             }
         },
+        "sharedImageGalleryName": {
+            "type": "string",
+            "metadata": {
+                "description": "Name of Shared Image Gallery."
+            }
+        },
         "galleryImageDef": {
             "type": "string",
             "metadata": {
@@ -177,7 +183,7 @@
         "hostpoolVMCount": "[parameters('hostpoolVMCount')]",
         "useAvailabilityZone": "[parameters('useAvailabilityZone')]",
         "storageAccountSku": "[parameters('storageAccountSku')]",
-        "sigGalleryName": "[concat(parameters('customerName'),'wvdsig01')]",
+        "sigGalleryName": "[parameters('sharedImageGalleryName')]",
         "galleryImageDef": "[parameters('galleryImageDef')]",
         "customImageReferenceId": "[concat(subscription().id, '/resourceGroups/', resourcegroup().name, '/providers/Microsoft.Compute/galleries/', variables('sigGalleryName'), '/images/', variables('galleryImageDef'))]",
         "varCustomImageReferenceId": "[concat('\"',variables('customImageReferenceId'),'\"')]",
@@ -614,7 +620,7 @@
         {
             "name": "[variables('devOpsName')]",
             "type": "microsoft.visualstudio/account",
-            "location": "centralus",
+            "location": "australiaeast",
             "apiVersion": "2014-04-01-preview",
             "properties": {
               "operationType": "Create",
@@ -630,7 +636,7 @@
             "type": "Microsoft.Resources/deploymentScripts",
             "apiVersion": "2020-10-01",
             "name": "createDevopsPipeline",
-            "location": "[variables('location')]",
+            "location": "australiaeast",
             "dependsOn": [
                 "[concat('Microsoft.Automation/automationAccounts/', variables('autoAccountName'), '/jobs/', variables('jobGuid2'))]"
             ],
