@@ -74,6 +74,12 @@
                 "Azure AD DS"
             ]
         },
+        "hostpoolName": {
+            "type": "string",
+            "metadata": {
+                "description": "Host Pool Name."
+            }
+        },
         "hostpoolVMSize": {
             "type": "string",
             "metadata": {
@@ -110,6 +116,13 @@
                 "0",
                 "1"
             ]
+        },
+        "profilesStorageAccountName": {
+            "type": "string",
+            "maxLength": 15,
+            "metadata": {
+                "description": "Premium FileStorage Account Name. Max 15 chars."
+            }
         },
         "storageAccountSku": {
             "type": "string",
@@ -158,7 +171,7 @@
         "existingDomainUsername": "[first(split(parameters('DomainJoinAccountUPN'), '@'))]",
         "existingDomainName": "[split(parameters('DomainJoinAccountUPN'), '@')[1]]",
         "vmNamePrefix": "[concat(parameters('customerName'),'wvd')]",
-        "hostpoolname": "[concat(parameters('customerName'),'-wvdpool01')]",
+        "hostpoolname": "[parameters('hostpoolName')]",
         "hostpoolVMSize": "[parameters('hostpoolVMSize')]",
         "vmInitialNumber": "[parameters('vmInitialNumber')]",
         "hostpoolVMCount": "[parameters('hostpoolVMCount')]",
@@ -173,8 +186,8 @@
         "location": "[resourcegroup().location]",
         "rgName": "[resourcegroup().name]",
         "keyvaultName": "[concat(parameters('customerName'),'-wvdkv', toLower(skip(parameters('utcValue'), 9)))]",
-        "assetsName": "[concat(parameters('customerName'),'wvdassets')]",
-        "profilesName": "[concat(parameters('customerName'),'wvdprf')]",
+        "assetsName": "[concat(parameters('customerName'),'wvdassets', toLower(skip(parameters('utcValue'), 9)))]",
+        "profilesName": "[parameters('profilesStorageAccountName')]",
         "profilesShareQuota": "[parameters('profilesShareQuota')]",
         "autoAccountName": "[concat(parameters('customerName'), '-wvd-automation')]",
         "tenantId": "[subscription().tenantId]",
