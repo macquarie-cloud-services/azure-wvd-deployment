@@ -195,7 +195,7 @@
         "assetsName": "[concat(parameters('customerName'),'wvdassets', toLower(skip(parameters('utcValue'), 9)))]",
         "profilesName": "[parameters('profilesStorageAccountName')]",
         "profilesShareQuota": "[parameters('profilesShareQuota')]",
-        "autoAccountName": "[concat(parameters('customerName'), '-wvd-automation')]",
+        "autoAccountName": "[concat(parameters('customerName'),'-wvd-aa', toLower(skip(parameters('utcValue'), 9)))]",
         "tenantId": "[subscription().tenantId]",
         "jobGuid0": "[guid(toLower(uniquestring(variables('identityName'), resourceGroup().id, parameters('utcValue'),'credentials')))]",
         "jobGuid": "[guid(toLower(uniquestring(variables('identityName'), resourceGroup().id, parameters('utcValue'),variables('autoAccountName'))))]",
