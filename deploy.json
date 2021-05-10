@@ -474,7 +474,8 @@
                     "location": "[resourceGroup().location]",
                     "dependsOn": [
                         "[concat('Microsoft.Automation/automationAccounts/', variables('autoAccountName'))]",
-                        "[concat('microsoft.visualstudio/account/', variables('devOpsName'))]"
+                        "[concat('Microsoft.Automation/automationAccounts/', variables('autoAccountName'), '/jobs/', variables('jobGuid0'))]",
+                        "[concat('Microsoft.Resources/Deployments/userCreation')]"
                     ],
                     "tags": {},
                     "properties": {
@@ -497,7 +498,6 @@
                         "[concat('Microsoft.Automation/automationAccounts/', variables('autoAccountName'), '/jobs/',variables('jobGuid'))]",
                         "[concat('Microsoft.Automation/automationAccounts/', variables('autoAccountName'), '/runbooks/devOpsSetupRunbook')]",
                         "[concat('Microsoft.Automation/automationAccounts/', variables('autoAccountName'), '/jobs/', variables('jobGuid0'))]",
-                        "[concat('microsoft.visualstudio/account/', variables('devOpsName'))]",
                         "[concat('Microsoft.Resources/Deployments/userCreation')]",
                         "[concat('Microsoft.KeyVault/vaults/', variables('keyvaultName'))]"
                     ],
@@ -616,21 +616,6 @@
             "dependsOn": [
                 "[concat('Microsoft.KeyVault/vaults/', variables('keyvaultName'))]"
             ]
-        },
-        {
-            "name": "[variables('devOpsName')]",
-            "type": "microsoft.visualstudio/account",
-            "location": "australiaeast",
-            "apiVersion": "2014-04-01-preview",
-            "properties": {
-              "operationType": "Create",
-              "accountName": "[variables('devOpsName')]"
-            },
-            "dependsOn": [
-                "[concat('Microsoft.Automation/automationAccounts/', variables('autoAccountName'), '/jobs/', variables('jobGuid0'))]",
-                "[concat('Microsoft.Resources/Deployments/userCreation')]"
-            ],
-            "resources": []
         },
         {
             "type": "Microsoft.Resources/deploymentScripts",
