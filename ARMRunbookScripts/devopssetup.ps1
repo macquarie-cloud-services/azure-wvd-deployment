@@ -3,7 +3,6 @@
 .DESCRIPTION
 This script is ran by the devOpsSetupRunbook and it does the following, in the order specified:
  * Create Shared Image Gallery in customer subscription and copy image from CSP tenancy Shared Image Gallery
- * Create a DevOps Organization
  * Create a DevOps project in the newly created DevOps organization
  * Create a service connection between the DevOps project and the Azure Subscription using the WVDServicePrincipal
  * Create a git repository in the DevOps project
@@ -109,41 +108,6 @@ if ($context -eq $null) {
 }
 
 
-# Get token for web request authorization
-$tenant = $context.Tenant.Id
-$azureRmProfile = [Microsoft.Azure.Commands.Common.Authentication.Abstractions.AzureRmProfileProvider]::Instance.Profile
-$profileClient = New-Object Microsoft.Azure.Commands.ResourceManager.Common.RMProfileClient($azureRmProfile)
-$pat = $profileClient.AcquireAccessToken($context.Tenant.Id).AccessToken
-$token = $pat
-$token = [System.Convert]::ToBase64String([System.Text.Encoding]::ASCII.GetBytes(":$($token)"))
-
-# Create devops organization
-$url = "https://management.azure.com/subscriptions/$SubscriptionId/resourcegroups/$ResourceGroupName/providers/microsoft.visualstudio/account/" + $orgName + "?api-version=2017-11-01-preview"
-write-output $url
-
-switch ($location) {
-  "australiaeast" { $region = "Australia East" }
-  "australiasoutheast" { $region = "Australia East" }
-  "australiacentral" { $region = "Australia East" }
-  "australiacentral2" { $region = "Australia East" }
-  default { $region = $location }
-}
-
-$body = @"
-{
-  "location": "$region",
-  "tags": {},
-  "properties": {},
-  "operationType": "create",
-  "accountName": "$orgName"
-}
-"@
-write-output $body 
-
-$response = Invoke-RestMethod -Uri $url -Headers @{Authorization = "Basic $token"} -Method Post -Body $Body -ContentType application/json
-write-output $response
-
-
 # Create Shared Image Gallery and copy image
 If ($galleryImageDef) {
     	# Custom image specified. This will copy the specified image from the MCS Shared Image Gallery to the local Gallery.
@@ -210,6 +174,14 @@ If ($galleryImageDef) {
     	}
 }
 
+
+# Get token for web request authorization
+$tenant = $context.Tenant.Id
+$azureRmProfile = [Microsoft.Azure.Commands.Common.Authentication.Abstractions.AzureRmProfileProvider]::Instance.Profile
+$profileClient = New-Object Microsoft.Azure.Commands.ResourceManager.Common.RMProfileClient($azureRmProfile)
+$pat = $profileClient.AcquireAccessToken($context.Tenant.Id).AccessToken
+$token = $pat
+$token = [System.Convert]::ToBase64String([System.Text.Encoding]::ASCII.GetBytes(":$($token)"))
 
 #Create devops project
 $url= $("https://dev.azure.com/" + $orgName + "/_apis/projects?api-version=5.1")
