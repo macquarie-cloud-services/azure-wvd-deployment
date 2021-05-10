@@ -108,6 +108,43 @@ if ($context -eq $null) {
 	exit
 }
 
+
+# Get token for web request authorization
+$tenant = $context.Tenant.Id
+$azureRmProfile = [Microsoft.Azure.Commands.Common.Authentication.Abstractions.AzureRmProfileProvider]::Instance.Profile
+$profileClient = New-Object Microsoft.Azure.Commands.ResourceManager.Common.RMProfileClient($azureRmProfile)
+$pat = $profileClient.AcquireAccessToken($context.Tenant.Id).AccessToken
+$token = $pat
+$token = [System.Convert]::ToBase64String([System.Text.Encoding]::ASCII.GetBytes(":$($token)"))
+
+# Create devops organization
+$url = "https://management.azure.com/subscriptions/$SubscriptionId/resourcegroups/$ResourceGroupName/providers/microsoft.visualstudio/account/" + $orgName + "?api-version=2017-11-01-preview"
+write-output $url
+
+switch ($location) {
+  "australiaeast" { $region = "Australia East" }
+  "australiasoutheast" { $region = "Australia East" }
+  "australiacentral" { $region = "Australia East" }
+  "australiacentral2" { $region = "Australia East" }
+  default { $region = $location }
+}
+
+$body = @"
+{
+  "location": "$region",
+  "tags": {},
+  "properties": {},
+  "operationType": "create",
+  "accountName": "$orgName"
+}
+"@
+write-output $body 
+
+$response = Invoke-RestMethod -Uri $url -Headers @{Authorization = "Basic $token"} -Method Post -Body $Body -ContentType application/json
+write-output $response
+
+
+# Create Shared Image Gallery and copy image
 If ($galleryImageDef) {
     	# Custom image specified. This will copy the specified image from the MCS Shared Image Gallery to the local Gallery.
     	$webhookURI = "https://7a4033cc-74d4-4c27-a5e8-399fc47e1eb5.webhook.ase.azure-automation.net/webhooks?token=%2fBQoUQT8f9l7vtcjuPmsXkI3ZY0a5ds13rol6PK1ItA%3d"
@@ -172,40 +209,6 @@ If ($galleryImageDef) {
     		New-AzAutomationVariable -AutomationAccountName $AutomationAccountName -Name 'galleryImageVersion' -Encrypted $False -Value $galleryImageVersion -ResourceGroupName $ResourceGroupName
     	}
 }
-
-# Get token for web request authorization
-$tenant = $context.Tenant.Id
-$azureRmProfile = [Microsoft.Azure.Commands.Common.Authentication.Abstractions.AzureRmProfileProvider]::Instance.Profile
-$profileClient = New-Object Microsoft.Azure.Commands.ResourceManager.Common.RMProfileClient($azureRmProfile)
-$pat = $profileClient.AcquireAccessToken($context.Tenant.Id).AccessToken
-$token = $pat
-$token = [System.Convert]::ToBase64String([System.Text.Encoding]::ASCII.GetBytes(":$($token)"))
-
-# Create devops organization
-$url = "https://management.azure.com/subscriptions/$SubscriptionId/resourcegroups/$ResourceGroupName/providers/microsoft.visualstudio/account/$orgName?api-version=2017-11-01-preview"
-write-output $url
-
-switch ($location) {
-  "australiaeast" { $region = "Australia East" }
-  "australiasoutheast" { $region = "Australia East" }
-  "australiacentral" { $region = "Australia East" }
-  "australiacentral2" { $region = "Australia East" }
-  default { $region = $location }
-}
-
-$body = @"
-{
-  "location": "$region",
-  "tags": {},
-  "properties": {},
-  "operationType": "create",
-  "accountName": "$orgName"
-}
-"@
-write-output $body 
-
-$response = Invoke-RestMethod -Uri $url -Headers @{Authorization = "Basic $token"} -Method Post -Body $Body -ContentType application/json
-write-output $response
 
 
 #Create devops project
