@@ -156,6 +156,12 @@
                 "win10-20h2-images"
             ]
         },
+        "devOpsOrgName": {
+            "type": "string",
+            "metadata": {
+                "description": "New or existing Azure DevOps Organization Name. New DevOps Org must be created manually."
+            }
+        },
         "optionalNotificationEmail": {
             "type": "string",
             "metadata": {
@@ -200,7 +206,7 @@
         "jobGuid0": "[guid(toLower(uniquestring(variables('identityName'), resourceGroup().id, parameters('utcValue'),'credentials')))]",
         "jobGuid": "[guid(toLower(uniquestring(variables('identityName'), resourceGroup().id, parameters('utcValue'),variables('autoAccountName'))))]",
         "jobGuid2": "[guid(toLower(uniquestring(variables('identityName'), subscription().id, parameters('utcValue'),'devOpsSetup')))]",
-        "devOpsName": "[concat(parameters('customerName'), 'WVD', skip(parameters('utcValue'), 9))]",
+        "devOpsName": "[parameters('devOpsOrgName')]",
         "devOpsProjectName": "[concat(parameters('customerName'),'WVDProj', skip(parameters('utcValue'), 9))]",
         "targetGroup": "[parameters('wvdUserGroup')]",
         "automationVariables": [
