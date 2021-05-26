@@ -13,6 +13,26 @@
                     "Name": "VHDLocations",
                     "Type": "MultiString",
                     "Value": "\\\\[profilesStorageAccountName].file.core.windows.net\\[profilesShareName]"
+                },
+                {
+                    "Name": "PreventLoginWithFailure",
+                    "Type": "DWORD",
+                    "Value": "1"
+                },
+                {
+                    "Name": "PreventLoginWithTempProfile",
+                    "Type": "DWORD",
+                    "Value": "1"
+                },
+                {
+                    "Name": "DeleteLocalProfileWhenVHDShouldApply",
+                    "Type": "DWORD",
+                    "Value": "1"
+                },
+                {
+                    "Name": "ConcurrentUserSessions",
+                    "Type": "DWORD",
+                    "Value": "0"
                 }
             ],
             "NTFSPermission": true,
