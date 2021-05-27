@@ -125,7 +125,9 @@ LogInfo("# 1. Retrieve Registry Values #")
 LogInfo("###############################")
 $fsLogixRegPath = "HKLM:\software\FSLogix"
 $expectedReqKey = 'Profiles'
+$fsLogixAppsKey = 'Apps'
 $expectedfsLogixRegKeyPath = Join-Path $fsLogixRegPath $expectedReqKey
+$fsLogixAppsRegKeyPath = Join-Path $fsLogixRegPath $fsLogixAppsKey
 
 LogInfo("############################")
 LogInfo("# 2. Check Profiles RegKey #")
@@ -137,6 +139,14 @@ if (-not (Test-Path $expectedfsLogixRegKeyPath)) {
 }
 else {
     LogInfo("RegexPath '$fsLogixRegPath' already existing. Creation skipped")
+}
+
+if (-not (Test-Path $fsLogixAppsRegKeyPath)) {
+    LogInfo("RegexPath '$fsLogixAppsRegKeyPath' not existing. Creating")
+    New-Item -Path $fsLogixAppsRegKeyPath -Force | Out-Null
+}
+else {
+    LogInfo("RegexPath '$fsLogixAppsRegKeyPath' already existing. Creation skipped")
 }
 
 LogInfo("######################")
@@ -153,3 +163,12 @@ $registryValues | ForEach-Object {
     }
     New-ItemProperty @inputObject -Force | Out-Null
 }
+
+LogInfo('Creating entry "{0}" of type "{1}" with value "{2}" in path "{3}"' -f CleanupInvalidSessions, REG_DWORD, 1, $fsLogixAppsRegKeyPath)
+$inputObject = @{
+    Path         = $fsLogixAppsRegKeyPath
+    Name         = 'CleanupInvalidSessions'
+    Value        = 1
+    PropertyType = 'REG_DWORD'
+}
+New-ItemProperty @inputObject -Force | Out-Null
