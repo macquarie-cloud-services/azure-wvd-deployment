@@ -167,8 +167,8 @@ $registryValues | ForEach-Object {
 LogInfo('Creating entry "{0}" of type "{1}" with value "{2}" in path "{3}"' -f CleanupInvalidSessions, REG_DWORD, 1, $fsLogixAppsRegKeyPath)
 $inputObject = @{
     Path         = $fsLogixAppsRegKeyPath
-    Name         = 'CleanupInvalidSessions'
-    Value        = 1
-    PropertyType = 'REG_DWORD'
+    Name         = "CleanupInvalidSessions"
+    Value        = "1"
+    PropertyType = "DWORD"
 }
 New-ItemProperty @inputObject -Force | Out-Null
