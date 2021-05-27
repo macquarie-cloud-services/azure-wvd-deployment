@@ -170,7 +170,7 @@ $scriptBlock = { .\psexec /accepteula -h -u $username -p $domainJoinPassword -c 
 Invoke-Command $scriptBlock -Verbose
 
 LogInfo("Using PSExec, exclude admin user from using FSLogix profiles")
-$scriptBlock = { .\psexec /accepteula -h -u $username -p $domainJoinPassword -c -f "powershell.exe" Add-LocalGroupMember -Group 'FSLogix Profile Exclude List' -Member $username -ErrorAction SilentlyContinue }
+$scriptBlock = { .\psexec /accepteula -h -u $username -p $domainJoinPassword -c -f "net localgroup 'FSLogix Profile Exclude List' $username /add" }
 Invoke-Command $scriptBlock -Verbose
 
 LogInfo("Execution policy for the admin user set. Setting path to $PSScriptRoot\azure-wvd-optimization-tool-master and running WVD Optimization Tool for Windows 10 build $win10Build.")
