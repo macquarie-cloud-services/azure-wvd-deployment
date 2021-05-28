@@ -139,6 +139,6 @@ Invoke-Command $scriptBlock -Verbose
 
 LogInfo("Timezone successfully set")
 
-$scriptBlock = { Restart-Computer -Force }
+$scriptBlock = { Restart-Computer -Force; Exit 0 }
 LogInfo("Restarting VM to apply customisations.")
 Invoke-Command $scriptBlock -Verbose
