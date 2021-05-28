@@ -48,8 +48,7 @@ Connect-AzAccount -Environment 'AzureCloud' -Credential $AzCredentials -ErrorAct
 Set-AzContext -SubscriptionId $SubscriptionId -ErrorAction Stop
 
 # Take disk snapshot
-$vm = Get-AzVM -Name $vmName -ErrorAction Stop
-$vmRG = $vm.ResourceGroupName
+$vm = Get-AzVM -Name $vmName -ResourceGroupName $ResourceGroupName -ErrorAction Stop
 $vmLocation = $vm.Location
 $osDiskName = $vm.StorageProfile.OsDisk.Name
 
@@ -60,10 +59,10 @@ If ($osDiskName.Length -gt 56) {
 $snapshotName = $osDiskName + "_presysprep_" + (Get-Date -UFormat %Y%m%d%R | ForEach-Object { $_ -replace ":", "" })
 
 # Shut down VM prior to snapshot but do not deallocate the VM
-$vmStatus = (Get-AzVM -Name $vmName -Resourcegroup $vmRG -Status).Statuses[1].Code
+$vmStatus = (Get-AzVM -Name $vmName -Resourcegroup $ResourceGroupName -Status).Statuses[1].Code
 If ($vmStatus -notmatch "stopped") {
     Write-Output "`nStopping VM $vmName to take disk snapshot..."
-    Stop-AzVM -Name $vmName -Resourcegroup $vmRG -Force -StayProvisioned
+    Stop-AzVM -Name $vmName -Resourcegroup $ResourceGroupName -Force -StayProvisioned
     $timer = 0    
     while ($vmStatus -notmatch "stopped") {
         # Set timer to avoid continuous loop
@@ -74,13 +73,13 @@ If ($vmStatus -notmatch "stopped") {
 		}
         Write-Output "`nWaiting 30 seconds for VM to be stopped."
         Start-Sleep 30
-        $vmStatus = (Get-AzVM -Name $vmName -Resourcegroup $vmRG -Status).Statuses[1].Code
+        $vmStatus = (Get-AzVM -Name $vmName -Resourcegroup $ResourceGroupName -Status).Statuses[1].Code
     }
 }
 
 Write-Output "`nCreating new disk snapshot $snapshotName ..."
 $snapshotConf =  New-AzSnapshotConfig -SourceUri $vm.StorageProfile.OsDisk.ManagedDisk.Id -Location $vmLocation -CreateOption copy
-$diskSnapshot = New-AzSnapshot -Snapshot $snapshotConf -SnapshotName $snapshotName -ResourceGroupName $vmRG
+$diskSnapshot = New-AzSnapshot -Snapshot $snapshotConf -SnapshotName $snapshotName -ResourceGroupName $ResourceGroupName
 If ($diskSnapshot.ProvisioningState -eq "Succeeded") {
     Write-Output "OS Disk Snapshot successfully created for VM $vmName"
 }
@@ -92,7 +91,7 @@ Else {
 
 # Start VM after disk snapshot created to run sysprep on VM
 Write-Output "`nStarting VM $vmName to perform sysprep..."
-Start-AzVM -Name $vmName -Resourcegroup $vmRG
+Start-AzVM -Name $vmName -Resourcegroup $ResourceGroupName
 $timer = 0
 while ($vmStatus -notmatch "running") {
     # Set timer to avoid continuous loop
@@ -103,7 +102,7 @@ while ($vmStatus -notmatch "running") {
     }
     Write-Output "`nWaiting 60 seconds for VM to start."
     Start-Sleep 60
-    $vmStatus = (Get-AzVM -Name $vmName -Resourcegroup $vmRG -Status).Statuses[1].Code
+    $vmStatus = (Get-AzVM -Name $vmName -Resourcegroup $ResourceGroupName -Status).Statuses[1].Code
 }
 
 # Run sysprep on the Gold VM
@@ -111,7 +110,7 @@ Write-Output "`nRunning sysprep command on $vmName via Custom Script Extension, 
 $fileUri = @("https://raw.githubusercontent.com/macquarie-cloud-services/azure-wvd-deployment/master/ARMRunbookScripts/sysprep.ps1")
 $settings = @{"fileUris" = $fileUri};
 $protectedSettings = @{"commandToExecute" = "powershell -ExecutionPolicy Unrestricted -File sysprep.ps1"};
-Set-AzVMExtension -ResourceGroupName $vmRG `
+Set-AzVMExtension -ResourceGroupName $ResourceGroupName `
     -Location $vmLocation `
     -VMName $vmName `
     -Name "runSysprep" `
@@ -121,7 +120,7 @@ Set-AzVMExtension -ResourceGroupName $vmRG `
     -Settings $settings `
     -ProtectedSettings $protectedSettings;
 
-$vmStatus = (Get-AzVM -Name $vmName -Resourcegroup $vmRG -Status).Statuses[1].Code
+$vmStatus = (Get-AzVM -Name $vmName -Resourcegroup $ResourceGroupName -Status).Statuses[1].Code
 $timer = 0
 while ($vmStatus -notmatch "stopped") {
     # Set timer to avoid continuous loop
@@ -132,13 +131,13 @@ while ($vmStatus -notmatch "stopped") {
     }
     Write-Output "`nWaiting 60 seconds for VM to be stopped."
     Start-Sleep 60
-    $vmStatus = (Get-AzVM -Name $vmName -Resourcegroup $vmRG -Status).Statuses[1].Code
+    $vmStatus = (Get-AzVM -Name $vmName -Resourcegroup $ResourceGroupName -Status).Statuses[1].Code
 }
 
 # Sysprep only stops the VM. Deallocate VM to continue.
 Write-Output "`nVM stopped. Deallocating VM."
-Stop-AzVM -Name $vmName -Resourcegroup $vmRG -Force
-$vmStatus = (Get-AzVM -Name $vmName -Resourcegroup $vmRG -Status).Statuses[1].Code
+Stop-AzVM -Name $vmName -Resourcegroup $ResourceGroupName -Force
+$vmStatus = (Get-AzVM -Name $vmName -Resourcegroup $ResourceGroupName -Status).Statuses[1].Code
 $timer = 0
 while ($vmStatus -notmatch "deallocated") {
     # Set timer to avoid continuous loop
@@ -149,19 +148,19 @@ while ($vmStatus -notmatch "deallocated") {
     }
     Write-Output "`nWaiting 30 seconds for VM to be deallocated."
     Start-Sleep 30
-    $vmStatus = (Get-AzVM -Name $vmName -Resourcegroup $vmRG -Status).Statuses[1].Code
+    $vmStatus = (Get-AzVM -Name $vmName -Resourcegroup $ResourceGroupName -Status).Statuses[1].Code
 }
 
 # Set status of VM to Generalized
 Write-Output "`nVM deallocated. Now setting VM status to Generalized for image capture."
-Set-AzVm -ResourceGroupName $vmRG -Name $vmName -Generalized
+Set-AzVm -ResourceGroupName $ResourceGroupName -Name $vmName -Generalized
 
 # Create Managed Image from Gold VM
 $imageName = $osDiskName + "_syspreped_" + (Get-Date -UFormat %Y%m%d%R | ForEach-Object { $_ -replace ":", "" })
 $image = New-AzImageConfig -Location $vmLocation -SourceVirtualMachineId $vm.Id 
 Write-Output "`nCreating image $imageName based on $vmName"
-New-AzImage -Image $image -ImageName $imageName -Resourcegroupname $vmRG
-$managedImage = Get-AzImage -ImageName $imageName -Resourcegroupname $vmRG
+New-AzImage -Image $image -ImageName $imageName -Resourcegroupname $ResourceGroupName
+$managedImage = Get-AzImage -ImageName $imageName -Resourcegroupname $ResourceGroupName
 Write-Output $managedImage
 
 # Copy managed image to Shared Image Gallery
@@ -218,8 +217,8 @@ If ($job.State -eq "Completed") {
 Write-Output "`nThe Generalized Gold VM can no longer be used. Recreating VM from snapshot taken..."
 
 Write-Output "...Removing Generalized VM and syspreped OS disk..."
-Remove-AzVM -ResourceGroupName $vmRG -Name $vmName -Force
-Remove-AzDisk -ResourceGroupName $vmRG -DiskName $osDiskName -Force
+Remove-AzVM -ResourceGroupName $ResourceGroupName -Name $vmName -Force
+Remove-AzDisk -ResourceGroupName $ResourceGroupName -DiskName $osDiskName -Force
 
 # Take a record of all tags on the VM
 If ($vm.tags) {
@@ -227,7 +226,7 @@ If ($vm.tags) {
 }
 $diskConfig = New-AzDiskConfig -Location $vmLocation -SourceResourceId $diskSnapshot.Id -CreateOption Copy -SkuName "Premium_LRS" -ErrorAction Stop
 Write-Output "`nCreating new disk from snapshot..."
-$OSdisk = New-AzDisk -Disk $diskConfig -ResourceGroupName $vmRG -DiskName $osDiskName -ErrorAction Stop
+$OSdisk = New-AzDisk -Disk $diskConfig -ResourceGroupName $ResourceGroupName -DiskName $osDiskName -ErrorAction Stop
 
 Write-Output "Creating new VM config and attaching new disk..."
 $newVMConf = New-AzVMConfig -VMName $vmName -VMSize $vm.HardwareProfile.VmSize -ErrorAction Stop
@@ -245,7 +244,7 @@ Foreach ($nic in $vm.NetworkProfile.NetworkInterfaces) {
 }
 
 Write-Output "Creating new VM from config..."
-$newVM = New-AzVM -ResourceGroupName $vmRG -Location $vmLocation -VM $newVMConf -DisableBginfoExtension -ErrorAction Stop
+$newVM = New-AzVM -ResourceGroupName $ResourceGroupName -Location $vmLocation -VM $newVMConf -DisableBginfoExtension -ErrorAction Stop
 Write-Output $newVM | fl
 If ($vmTags) {
     Write-Output "Setting the same tags as that of the original VM..."
