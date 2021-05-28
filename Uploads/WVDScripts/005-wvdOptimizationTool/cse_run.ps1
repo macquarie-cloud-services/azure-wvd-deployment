@@ -169,6 +169,10 @@ LogInfo("Using PSExec, set execution policy for the admin user")
 $scriptBlock = { .\psexec /accepteula -h -u $username -p $domainJoinPassword -c -f "powershell.exe" Set-ExecutionPolicy -ExecutionPolicy Unrestricted -Scope CurrentUser -Force }
 Invoke-Command $scriptBlock -Verbose
 
+LogInfo("Using PSExec, exclude admin user from using FSLogix profiles")
+$scriptBlock = { net localgroup "FSLogix Profile Exclude List" $username /add }
+Invoke-Command $scriptBlock -Verbose
+
 LogInfo("Execution policy for the admin user set. Setting path to $PSScriptRoot\azure-wvd-optimization-tool-master and running WVD Optimization Tool for Windows 10 build $win10Build.")
 $scriptBlock = { .\psexec /accepteula -h -u $username -p $domainJoinPassword -c -f "powershell.exe" ""Set-Location $PSScriptRoot\azure-wvd-optimization-tool-master"; ".\Win10_VirtualDesktop_Optimize.ps1 -WindowsVersion $win10Build -Verbose"" }
 Invoke-Command $scriptBlock -Verbose
