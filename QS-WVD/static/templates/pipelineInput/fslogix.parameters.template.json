@@ -15,6 +15,11 @@
                     "Value": "\\\\[profilesStorageAccountName].file.core.windows.net\\[profilesShareName]"
                 },
                 {
+                    "Name": "PreventLoginWithFailure",
+                    "Type": "DWORD",
+                    "Value": "1"
+                },
+                {
                     "Name": "DeleteLocalProfileWhenVHDShouldApply",
                     "Type": "DWORD",
                     "Value": "1"
