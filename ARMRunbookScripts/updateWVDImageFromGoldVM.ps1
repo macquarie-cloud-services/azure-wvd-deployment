@@ -60,7 +60,7 @@ $snapshotName = $osDiskName + "_presysprep_" + (Get-Date -UFormat %Y%m%d%R | For
 
 # Shut down VM prior to snapshot but do not deallocate the VM
 $vmStatus = (Get-AzVM -Name $vmName -Resourcegroup $ResourceGroupName -Status).Statuses[1].Code
-If ($vmStatus -notmatch "stopped") {
+If ($vmStatus -match "running") {
     Write-Output "`nStopping VM $vmName to take disk snapshot..."
     Stop-AzVM -Name $vmName -Resourcegroup $ResourceGroupName -Force -StayProvisioned
     $timer = 0    
@@ -109,7 +109,7 @@ while ($vmStatus -notmatch "running") {
 Write-Output "`nRunning sysprep command on $vmName via Custom Script Extension, now waiting until the vm is stopped."
 $fileUri = @("https://raw.githubusercontent.com/macquarie-cloud-services/azure-wvd-deployment/master/ARMRunbookScripts/sysprep.ps1")
 $settings = @{"fileUris" = $fileUri};
-$protectedSettings = @{"commandToExecute" = "powershell -ExecutionPolicy Unrestricted -File sysprep.ps1"};
+$protectedSettings = @{"commandToExecute" = "powershell.exe -ExecutionPolicy Unrestricted -File sysprep.ps1"};
 Set-AzVMExtension -ResourceGroupName $ResourceGroupName `
     -Location $vmLocation `
     -VMName $vmName `
@@ -118,11 +118,12 @@ Set-AzVMExtension -ResourceGroupName $ResourceGroupName `
     -ExtensionType "CustomScriptExtension" `
     -TypeHandlerVersion "1.10" `
     -Settings $settings `
-    -ProtectedSettings $protectedSettings;
+    -ProtectedSettings $protectedSettings `
+    -NoWait
 
 $vmStatus = (Get-AzVM -Name $vmName -Resourcegroup $ResourceGroupName -Status).Statuses[1].Code
 $timer = 0
-while ($vmStatus -notmatch "stopped") {
+while ($vmStatus -notmatch "stopped" -and $state -notmatch "deallocated") {
     # Set timer to avoid continuous loop
     $timer = $timer + 1
     if ($timer -eq 20) {
