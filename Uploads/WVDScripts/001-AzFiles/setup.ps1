@@ -59,7 +59,10 @@ Else {
     Install-Module -Name Az.Network -Force -Verbose
     Install-Module -Name Az.Resources -Force -Verbose
     Import-Module -Name AzFilesHybrid -Force -Verbose
-    
-    Write-Output "`nJoining Storage Account $S to domain $($profilestorage.AzureFilesIdentityBasedAuth.ActiveDirectoryProperties.DomainName)"
+
+    Write-Output "`nUpdating Storage Account to support AES 256 Kerberos encryption..."
+    Update-AzStorageAccountAuthForAES256 -ResourceGroupName $RG -StorageAccountName $S
+
+    Write-Output "`nJoining Storage Account $S to domain..."
     Join-AzStorageAccountForAuth -ResourceGroupName $RG -StorageAccountName $S -DomainAccountType 'ComputerAccount' -OverwriteExistingADObject
 }
