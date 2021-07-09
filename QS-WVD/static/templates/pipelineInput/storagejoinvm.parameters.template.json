@@ -79,8 +79,15 @@
                         "StorageAccountRG": "[resourceGroupName]",
                         "DomainName": "[domainName]",
                         "DomainAdminCred": {
-                          "userName": "[domainJoinUser]",
-                          "password": "[domainJoinPassword]"
+                            "userName": "[domainJoinUser]",
+                            "password": {
+                                "reference": {
+                                    "keyVault": {
+                                        "id": "/subscriptions/[subscriptionId]/resourceGroups/[resourceGroupName]/providers/Microsoft.KeyVault/vaults/[keyVaultName]"
+                                    },
+                                    "secretName": "[AdminPasswordSecret]"
+                                }
+                            }
                         }
                     }
                 }
