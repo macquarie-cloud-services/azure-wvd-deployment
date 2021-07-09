@@ -196,6 +196,75 @@ stages:
                   azurePowerShellVersion: LatestVersion
                 enabled: true
 
+  - deployment: Deploy_DomainJoin_VM
+    dependsOn:
+    - Deploy_WVDProfilesStorageAccount01
+    environment: SBX
+    condition: and(succeeded(), ne(variables['addVMsToHostpoolOnly'], true))
+    timeoutInMinutes: 120
+    pool:
+      vmImage: $(vmImage)
+    strategy:
+        runOnce:
+          deploy:
+            steps:
+              - checkout: self
+              - task: AzurePowerShell@4
+                displayName: 'Deploy module [VirtualMachines] in [$(resourceGroupName)] via [$(serviceConnection)]'
+                name: Deploy_DomainJoin_VM
+                inputs:
+                  azureSubscription: $(serviceConnection)
+                  ScriptType: InlineScript
+                  inline: |
+                    Write-Verbose "Load function" -Verbose
+                    . '$(Build.Repository.LocalPath)/$(orchestrationFunctionsPath)/Invoke-GeneralDeployment.ps1'
+                    . '$(Build.Repository.LocalPath)/$(orchestrationFunctionsPath)/Add-CustomParameters.ps1'
+
+                    $parameterFilePath = '$(Pipeline.Workspace)/parameters/domainjoinvm.parameters.json'
+                    $functionInput = @{
+                      resourcegroupName             = "$(resourceGroupName)"
+                      location                      = "$(location)"
+                      moduleName                    = "VirtualMachines"
+                      moduleVersion                 = "2020-06-02"
+                      parameterFilePath             = $parameterFilePath
+                    }
+
+                    Write-Verbose "Invoke task with" -Verbose
+                    $functionInput.Keys | ForEach-Object { Write-Verbose ("PARAMETER: `t'{0}' with value '{1}'" -f $_, $functionInput[$_]) -Verbose }
+
+                    Write-Verbose "Fetch and populated pipeline outputs" -Verbose
+
+                    $parameterObjects = $()
+                    if (-not [String]::IsNullOrEmpty('$(customImageReferenceId)')) {
+                      Write-Verbose "Using custom image ref ['$(customImageReferenceId)']" -Verbose
+                      $parameterObjects += @{
+                        imageReference = @{
+                          id = '$(customImageReferenceId)'
+                        }
+                      }
+                    }
+                    else {
+                      $imageReference = @{
+                        publisher = '$(publisher)'
+                        offer     = '$(offer)'
+                        sku       = '$(sku)'
+                        version   = '$(version)'
+                      }
+                      Write-Verbose ("Using published image ref [{0}]" -f ($imageReference | ConvertTo-Json)) -Verbose
+                      $parameterObjects += @{
+                        imageReference = $imageReference
+                      }
+                    }
+                    
+                    $functionInput += @{
+                      optionalParameters = $parameterObjects
+                    }
+
+                    Invoke-GeneralDeployment @functionInput -Verbose
+                  errorActionPreference: stop
+                  azurePowerShellVersion: LatestVersion
+                enabled: true 
+
   - deployment: Deploy_WVD_Gold_VM
     dependsOn:
     - Deploy_wvdAssetsStorage
@@ -267,7 +336,7 @@ stages:
 
   - deployment: Deploy_WVDHostPool
     dependsOn: 
-    - Deploy_WVDProfilesStorageAccount01
+    - Deploy_DomainJoin_VM
     environment: SBX
     condition: and(succeeded(), ne(variables['addVMsToHostpoolOnly'], true))
     timeoutInMinutes: 120
