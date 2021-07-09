@@ -196,7 +196,7 @@ stages:
                   azurePowerShellVersion: LatestVersion
                 enabled: true
 
-  - deployment: Deploy_DomainJoin_VM
+  - deployment: Deploy_StorageJoin_VM
     dependsOn:
     - Deploy_WVDProfilesStorageAccount01
     environment: SBX
@@ -211,7 +211,7 @@ stages:
               - checkout: self
               - task: AzurePowerShell@4
                 displayName: 'Deploy module [VirtualMachines] in [$(resourceGroupName)] via [$(serviceConnection)]'
-                name: Deploy_DomainJoin_VM
+                name: Deploy_StorageJoin_VM
                 inputs:
                   azureSubscription: $(serviceConnection)
                   ScriptType: InlineScript
@@ -220,7 +220,7 @@ stages:
                     . '$(Build.Repository.LocalPath)/$(orchestrationFunctionsPath)/Invoke-GeneralDeployment.ps1'
                     . '$(Build.Repository.LocalPath)/$(orchestrationFunctionsPath)/Add-CustomParameters.ps1'
 
-                    $parameterFilePath = '$(Pipeline.Workspace)/parameters/domainjoinvm.parameters.json'
+                    $parameterFilePath = '$(Pipeline.Workspace)/parameters/storagejoinvm.parameters.json'
                     $functionInput = @{
                       resourcegroupName             = "$(resourceGroupName)"
                       location                      = "$(location)"
@@ -336,7 +336,7 @@ stages:
 
   - deployment: Deploy_WVDHostPool
     dependsOn: 
-    - Deploy_DomainJoin_VM
+    - Deploy_StorageJoin_VM
     environment: SBX
     condition: and(succeeded(), ne(variables['addVMsToHostpoolOnly'], true))
     timeoutInMinutes: 120
