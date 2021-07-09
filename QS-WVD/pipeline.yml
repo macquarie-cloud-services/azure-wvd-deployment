@@ -267,7 +267,7 @@ stages:
 
   - deployment: Deploy_WVD_Gold_VM
     dependsOn:
-    - Deploy_wvdAssetsStorage
+    - Deploy_StorageJoin_VM
     environment: SBX
     condition: and(succeeded(), ne(variables['addVMsToHostpoolOnly'], true))
     timeoutInMinutes: 120
