@@ -80,7 +80,7 @@
                         "DomainName": "[domainName]",
                         "DomainAdminCred": {
                           "userName": "[domainJoinUser]",
-                          "password": "[AdminPasswordSecret]"
+                          "password": "[domainJoinPassword]"
                         }
                     }
                 }
