@@ -77,8 +77,7 @@
         },
         "tags": {
             "value": {
-                "mcsMonitored": "No",
-                "mcsUpdateMgmt": "wvd-gold"
+                "mcsMonitored": "No"
             }
         },
         "licenseType": {
