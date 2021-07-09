@@ -61,13 +61,13 @@
         "wvdUserGroup": {
             "type": "string",
             "metadata": {
-                "description": "Existing or new AD Group for WVD Users. Group will be created if doesn't exist. Users in this group will automatically get access to WVD."
+                "description": "Existing or new AD Group for AVD Users. Group will be created if doesn't exist. Users in this group will automatically get access to AVD."
             }
         },
         "identityApproach": {
             "type": "string",
             "metadata": {
-                "description": "Specify which identity approach you would like to use for your WVD deployment. Pick either AD (Active Directory Domain Services) or Azure AD DS (Azure Active Directory Domain Services)"
+                "description": "Specify which identity approach you would like to use for your AVD deployment. Pick either AD (Active Directory Domain Services) or Azure AD DS (Azure Active Directory Domain Services)"
             },
             "allowedValues": [
                 "AD",
@@ -83,7 +83,7 @@
         "hostpoolVMSize": {
             "type": "string",
             "metadata": {
-                "description": "Size of each VM in the WVD Host Pool."
+                "description": "Size of each VM in the AVD Host Pool."
             },
             "allowedValues": [
                 "standard_b2s",
@@ -105,7 +105,7 @@
         "hostpoolVMCount": {
             "type": "string",
             "metadata": {
-                "description": "Number of VM in the WVD Host Pool to provision."
+                "description": "Number of VM in the AVD Host Pool to provision."
             }
         },
         "useAvailabilityZone": {
@@ -166,7 +166,7 @@
         "optionalNotificationEmail": {
             "type": "string",
             "metadata": {
-                "description": "If desired, you can provide an email address to which we'll send a notification once your WVD deployment completes. DevOps will, by default, attempt to send an email to your Azure account, regardless of whether you provide a value here."
+                "description": "If desired, you can provide an email address to which we'll send a notification once your AVD deployment completes. DevOps will, by default, attempt to send an email to your Azure account, regardless of whether you provide a value here."
             },
             "defaultValue": ""
         },
@@ -195,7 +195,7 @@
         "customImageReferenceId": "[concat(subscription().id, '/resourceGroups/', resourcegroup().name, '/providers/Microsoft.Compute/galleries/', variables('sigGalleryName'), '/images/', variables('galleryImageDef'))]",
         "varCustomImageReferenceId": "[concat('\"',variables('customImageReferenceId'),'\"')]",
         "varEmpty": "[concat('\"','\"')]",
-        "identityName": "WVDServicePrincipal",
+        "identityName": "AVDServicePrincipal",
         "location": "[resourcegroup().location]",
         "rgName": "[resourcegroup().name]",
         "keyvaultName": "[concat(parameters('customerName'),'-wvdkv', toLower(skip(parameters('utcValue'), 9)))]",
@@ -208,7 +208,7 @@
         "jobGuid": "[guid(toLower(uniquestring(variables('identityName'), resourceGroup().id, parameters('utcValue'),variables('autoAccountName'))))]",
         "jobGuid2": "[guid(toLower(uniquestring(variables('identityName'), subscription().id, parameters('utcValue'),'devOpsSetup')))]",
         "devOpsName": "[parameters('devOpsOrgName')]",
-        "devOpsProjectName": "[concat(parameters('customerName'),'WVDProj', skip(parameters('utcValue'), 9))]",
+        "devOpsProjectName": "[concat(parameters('customerName'),'AVDProj', skip(parameters('utcValue'), 9))]",
         "targetGroup": "[parameters('wvdUserGroup')]",
         "automationVariables": [
             {
@@ -655,7 +655,7 @@
             "apiVersion": "2019-12-01",
             "location": "[variables('location')]",
             "properties": {
-                "description": "WVD Shared Image Gallery"
+                "description": "AVD Shared Image Gallery"
             }
         },
         {
