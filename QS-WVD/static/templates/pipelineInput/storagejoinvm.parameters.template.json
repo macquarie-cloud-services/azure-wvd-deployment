@@ -1,0 +1,96 @@
+{
+    "$schema": "http://schema.management.azure.com/schemas/2015-01-01/deploymentParameters.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+        "vmNamePrefix": {
+            "value": "storagejoinvm"
+        },
+        "vmNumberOfInstances": {
+            "value": 1
+        },
+        "vmInitialNumber": {
+            "value": 1
+        },
+        "vmSize": {
+            "value": "standard_b2s"
+        },
+        "imageReference": {
+            "value": {
+                "id": "<overwrittenByPipeline>",
+                "publisher": "[publisher]",
+                "offer": "[offer]",
+                "sku": "[sku]",
+                "version": "[imageVersion]"
+             }
+        },
+        "osDisk": {
+            "value": {
+                "createOption": "fromImage",
+                "diskSizeGB": "[diskSizeGB]",
+                "managedDisk": {
+                    "storageAccountType": "[vmDiskType]"
+                }
+            }
+        },
+        "adminUsername": {
+            "value": "[adminUsername]"
+        },
+        "adminPassword": {
+            "reference": {
+                "keyVault": {
+                    "id": "/subscriptions/[subscriptionId]/resourceGroups/[resourceGroupName]/providers/Microsoft.KeyVault/vaults/[keyVaultName]"
+                },
+                "secretName": "[AdminPasswordSecret]"
+            }
+        },
+        "subnetId": {
+            "value": "subscriptions/[subscriptionId]/resourceGroups/[vnetResourceGroupName]/providers/Microsoft.Network/virtualNetworks/[vnetName]/subnets/[subnetName]"
+        },
+        "domainName": {
+            "value": "[domainName]"
+        },
+        "domainJoinUser": {
+            "value": "[domainJoinUser]"
+        },
+        "domainJoinPassword": {
+            "reference": {
+                "keyVault": {
+                    "id": "/subscriptions/[subscriptionId]/resourceGroups/[resourceGroupName]/providers/Microsoft.KeyVault/vaults/[keyVaultName]"
+                },
+                "secretName": "[AdminPasswordSecret]"
+            }
+        },
+        "domainJoinOU": {
+            "value": ""
+        },
+        "enablePublicIP": {
+            "value": false
+        },
+        "eventHubAuthorizationRuleId": {
+            "value": ""
+        },
+        "eventHubName": {
+            "value": ""
+        },
+        "lockForDeletion": {
+            "value": false
+        },
+        "tags": {
+            "value": {
+                "mcsMonitored": "No",
+                "mcsUpdateMgmt": "wvd-gold"
+            }
+        },
+        "licenseType": {
+            "value": "Windows_Client"
+        },
+        "windowsConfiguration": {
+            "value": {
+                "enableAutomaticUpdates": true,
+                "patchSettings": {
+                    "patchMode": "AutomaticByOS"
+                }
+            }
+        }
+    }
+}
