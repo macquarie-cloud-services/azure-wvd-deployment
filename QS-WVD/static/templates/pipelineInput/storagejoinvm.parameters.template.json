@@ -79,7 +79,7 @@
                         "StorageAccountRG": "[resourceGroupName]",
                         "DomainName": "[domainName]",
                         "DomainAdminCred": {
-                            "userName": "[domainJoinUser]",
+                            "userName": "[adminUsername]",
                             "password": {
                                 "reference": {
                                     "keyVault": {
