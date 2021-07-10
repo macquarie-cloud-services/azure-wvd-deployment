@@ -531,6 +531,14 @@
                 "description": "Optional. The DSC configuration object"
             }
         },
+        "identity": {
+            "type": "object",
+            "defaultValue": {
+            },
+            "metadata": {
+                "description": "Optional. User or System Assigned Identity"
+            }
+        },
         "enableBootDiagnostics": {
             "type": "bool",
             "defaultValue": false,
@@ -888,6 +896,7 @@
             ],
             "zones": "[if(parameters('useAvailabilityZone'), array(variables('allZones').zones[copyIndex()]), json('null'))]",
             "plan": "[if(empty(parameters('plan')), json('null'),parameters('plan'))]",
+            "identity": "[if(empty(parameters('identity')), json('null'),parameters('identity'))]",
             "properties": {
                 "hardwareProfile": {
                     "vmSize": "[parameters('vmSize')]"
