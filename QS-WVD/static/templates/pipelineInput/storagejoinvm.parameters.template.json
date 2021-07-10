@@ -68,7 +68,7 @@
                 "settings": {
                     "wmfVersion": "latest",
                     "configuration": {
-                        "url": "https://github.com/macquarie-cloud-services/azure-wvd-deployment/raw/master/Uploads/DSCDomainJoinStorageScripts_2020-04-28.zip",
+                        "url": "https://github.com/macquarie-cloud-services/azure-wvd-deployment/raw/master/Uploads/DSCDomainJoinStorageScripts_v1.zip",
                         "script": "Configuration.ps1",
                         "function": "DomainJoinFileShare"
                     }
