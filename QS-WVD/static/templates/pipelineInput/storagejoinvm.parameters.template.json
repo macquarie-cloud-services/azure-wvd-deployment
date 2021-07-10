@@ -68,13 +68,14 @@
                 "settings": {
                     "wmfVersion": "latest",
                     "configuration": {
-                        "url": "https://github.com/macquarie-cloud-services/azure-wvd-deployment/raw/master/Uploads/DSCDomainJoinStorageScripts_v1_5.zip",
+                        "url": "https://github.com/macquarie-cloud-services/azure-wvd-deployment/raw/master/Uploads/DSCDomainJoinStorageScripts_v1_6.zip",
                         "script": "Configuration.ps1",
                         "function": "DomainJoinFileShare"
                     }
                 },
                 "protectedSettings": {
                     "configurationArguments": {
+                        "SubscriptionId": "[subscriptionId]",
                         "StorageAccountName": "[profilesStorageAccountName]",
                         "StorageAccountRG": "[resourceGroupName]",
                         "DomainName": "[domainName]",
