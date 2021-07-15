@@ -154,8 +154,8 @@
                 "description": "Shared Image Gallery Image Definition. eg. win10-o365-images"
             },
             "allowedValues": [
-                "win10-20h2-o365-images",
-                "win10-20h2-images"
+                "avd-win10-20h2-o365-images",
+                "avd-win10-20h2-images"
             ]
         },
         "devOpsOrgName": {
