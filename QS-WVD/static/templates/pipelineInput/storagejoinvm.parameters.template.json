@@ -81,14 +81,7 @@
                         "DomainName": "[domainName]",
                         "DomainAdminCred": {
                             "userName": "[domainJoinUser]",
-                            "password": {
-                                "reference": {
-                                    "keyVault": {
-                                        "id": "/subscriptions/[subscriptionId]/resourceGroups/[resourceGroupName]/providers/Microsoft.KeyVault/vaults/[keyVaultName]"
-                                    },
-                                    "secretName": "[AdminPasswordSecret]"
-                                }
-                            }
+                            "password": "[reference(resourceId('/subscriptions/[subscriptionId]/resourceGroups/[resourceGroupName]/providers/Microsoft.KeyVault/vaults/[keyVaultName]').[AdminPasswordSecret].secret]"
                         }
                     }
                 }
@@ -109,6 +102,14 @@
         "tags": {
             "value": {
                 "mcsMonitored": "No"
+            }
+        },
+        "identity": {
+            "value": {
+                "type": "userAssigned",
+                "userAssignedIdentities": {
+                    "/subscriptions/[subscriptionId]/resourceGroups/[resourceGroupName]/providers/Microsoft.ManagedIdentity/userAssignedIdentities/WVDServicePrincipal": {}
+                }
             }
         },
         "licenseType": {
